@@ -1,0 +1,21 @@
+{
+  "name": "Borne Farms Invest",
+  "short_name": "Borne Invest",
+  "description": "Own cattle units, track farm-backed growth, lock investments, and trade through Borne Farms escrow.",
+  "start_url": "./dashboard.html#finance",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#060c1d",
+  "theme_color": "#060c1d",
+  "categories": ["finance", "business", "productivity"],
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

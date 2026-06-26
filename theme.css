@@ -1,0 +1,230 @@
+/* ============================================================
+   BORNE FARMS — Unified Theme System
+   Premium light/dark base + per-user double-color accents.
+   Loaded AFTER index.css so it re-skins the whole app by
+   overriding the existing CSS variable names.
+   Reference dark mode: deep-navy moonlit farm night.
+   ============================================================ */
+
+/* -------- smooth theme transitions -------- */
+html { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }
+body, .card, .sidebar, .top-header, .feature-card, .tier-card,
+.breed-card-item, .stats-band, input, select, textarea, button {
+    transition: background-color .35s ease, color .35s ease,
+                border-color .35s ease, box-shadow .35s ease;
+}
+
+/* ============================================================
+   BASE THEME — DARK (navy night, matches reference image)
+   ============================================================ */
+html[data-theme="dark"] {
+    --bg-primary:   #060c1d;
+    --bg-secondary: #0a1228;
+    --bg-tertiary:  #101a35;
+    --bg-elevated:  #16223f;
+    --bg-glass:     rgba(10, 18, 40, 0.72);
+
+    --text-primary:   #eaf0fb;
+    --text-secondary: #9aa7c4;
+    --text-muted:     #62708f;
+
+    --border-color: #1d2944;
+    --border-light: #2b3a5c;
+
+    --accent-amber: #e2b53a;  --accent-amber-light: #f5cf63;
+    --accent-red:   #e5615f;  --accent-red-light:   #f08a88;
+    --accent-blue:  #5b8def;  --accent-blue-light:  #86b0f6;
+    --accent-purple:#9b7ee6;  --accent-purple-light:#b9a3f0;
+    --accent-pink:  #d273a6;  --accent-orange:      #ef8a44;
+    --accent-cyan:  #44c2c8;
+
+    --gradient-card: linear-gradient(145deg, #0d1730 0%, #070e20 100%);
+    --gradient-hero: linear-gradient(160deg, #0a1530 0%, #060c1d 45%, #0b1020 100%);
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-md: 0 4px 14px rgba(0,0,0,.5);
+    --shadow-lg: 0 12px 30px rgba(0,0,0,.55);
+    --shadow-xl: 0 24px 50px rgba(0,0,0,.6);
+}
+
+/* ============================================================
+   BASE THEME — LIGHT (premium warm off-white)
+   ============================================================ */
+html[data-theme="light"] {
+    --bg-primary:   #f4f7fc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary:  #eef2fa;
+    --bg-elevated:  #ffffff;
+    --bg-glass:     rgba(255, 255, 255, 0.78);
+
+    --text-primary:   #141c2e;
+    --text-secondary: #4a5670;
+    --text-muted:     #8793ad;
+
+    --border-color: #e3e9f3;
+    --border-light: #d3dcea;
+
+    --accent-amber: #d99a16;  --accent-amber-light: #f0bb3c;
+    --accent-red:   #d94f4f;  --accent-red-light:   #e87272;
+    --accent-blue:  #3a73d8;  --accent-blue-light:  #6093ec;
+    --accent-purple:#7a5ce0;  --accent-purple-light:#9a82ec;
+    --accent-pink:  #c2548a;  --accent-orange:      #e07a2e;
+    --accent-cyan:  #1ba6ac;
+
+    --gradient-card: linear-gradient(145deg, #ffffff 0%, #f3f6fc 100%);
+    --gradient-hero: linear-gradient(160deg, #eaf1fd 0%, #f7f9fe 50%, #e9f0fc 100%);
+
+    --shadow-sm: 0 1px 2px rgba(30,45,80,.06);
+    --shadow-md: 0 4px 16px rgba(30,45,80,.08);
+    --shadow-lg: 0 14px 34px rgba(30,45,80,.10);
+    --shadow-xl: 0 26px 54px rgba(30,45,80,.12);
+}
+
+/* ============================================================
+   ACCENT PRESETS — define raw primary (--p) + secondary (--s)
+   Each is a premium "double color" pairing.
+   ============================================================ */
+html[data-accent="midnight"] {  /* default — matches the night image */
+    --p:#5079d8; --p-l:#7fa3ee; --p-d:#3155ad; --p-glow:rgba(80,121,216,.40);
+    --s:#37b6c2; --s-l:#63d2dc; --s-d:#1f828c; --s-glow:rgba(55,182,194,.32);
+}
+html[data-accent="sunset"] {     /* orange + warm gold/white */
+    --p:#ef7d2e; --p-l:#ff9d57; --p-d:#c75d18; --p-glow:rgba(239,125,46,.40);
+    --s:#f3b53c; --s-l:#ffce63; --s-d:#c98c1a; --s-glow:rgba(243,181,60,.32);
+}
+html[data-accent="slate"] {      /* grey + blue */
+    --p:#4d80e0; --p-l:#79a2ee; --p-d:#2d5cb8; --p-glow:rgba(77,128,224,.38);
+    --s:#7d8aa6; --s-l:#a3aec5; --s-d:#5a6680; --s-glow:rgba(125,138,166,.28);
+}
+html[data-accent="emerald"] {    /* emerald + lime */
+    --p:#1aa86d; --p-l:#46c790; --p-d:#0f7d4f; --p-glow:rgba(26,168,109,.38);
+    --s:#84c54f; --s-l:#a3dd75; --s-d:#5f9633; --s-glow:rgba(132,197,79,.30);
+}
+html[data-accent="violet"] {     /* violet + rose */
+    --p:#7c5ce0; --p-l:#9d82ec; --p-d:#5a3cb8; --p-glow:rgba(124,92,224,.38);
+    --s:#d06bb0; --s-l:#e191c8; --s-d:#a44888; --s-glow:rgba(208,107,176,.30);
+}
+html[data-accent="heritage"] {   /* original brand: cork brown + leaf green */
+    --p:#a0724a; --p-l:#c49a6c; --p-d:#7a5430; --p-glow:rgba(160,114,74,.35);
+    --s:#5fa052; --s-l:#7cc06f; --s-d:#3d7a32; --s-glow:rgba(95,160,82,.30);
+}
+
+/* ============================================================
+   MAP accents onto the app's existing token names.
+   The dashboard treats --accent-brown as PRIMARY and
+   --accent-green as SECONDARY everywhere, so we remap them.
+   ============================================================ */
+html[data-accent] {
+    --accent-brown:       var(--p);
+    --accent-brown-light: var(--p-l);
+    --accent-brown-dark:  var(--p-d);
+    --accent-brown-glow:  var(--p-glow);
+
+    --accent-green:       var(--s);
+    --accent-green-light: var(--s-l);
+    --accent-green-dark:  var(--s-d);
+    --accent-green-glow:  var(--s-glow);
+
+    --gradient-primary: linear-gradient(135deg, var(--p-l) 0%, var(--p-d) 100%);
+    --gradient-green:   linear-gradient(135deg, var(--s-l) 0%, var(--s-d) 100%);
+
+    --shadow-glow-brown: 0 0 30px var(--p-glow);
+    --shadow-glow-green: 0 0 30px var(--s-glow);
+
+    /* landing-page local aliases (index.html uses these names) */
+    --brown:       var(--p);
+    --brown-light: var(--p-l);
+    --brown-dark:  var(--p-d);
+    --brown-warm:  var(--p-l);
+    --green:       var(--s);
+    --green-light: var(--s-l);
+    --green-dark:  var(--s-d);
+    --green-mat:   var(--s);
+}
+
+/* landing-page base aliases follow the active theme */
+html[data-theme] {
+    --bg-dark:    var(--bg-primary);
+    --bg-warm:    var(--bg-secondary);
+    --bg-section: var(--bg-tertiary);
+    --text-white: var(--text-primary);
+    --text-cream: var(--text-secondary);
+    /* --text-muted already shared */
+}
+
+/* ============================================================
+   APPEARANCE CONTROL — mobile-app only
+   A pill light/dark toggle + a row of accent-colour dots.
+   Sits above the mobile bottom nav bar.
+   ============================================================ */
+.theme-dock {
+    position: fixed; z-index: 4000;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    display: flex; flex-direction: column; align-items: flex-end; gap: .55rem;
+}
+/* lift above the mobile bottom nav bar when present */
+@media (max-width: 768px) {
+    .theme-dock { bottom: calc(90px + env(safe-area-inset-bottom)); }
+}
+
+/* --- accent dots --- */
+.theme-accents {
+    display: flex; gap: .5rem;
+    padding: .45rem .55rem;
+    background: var(--bg-glass);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    box-shadow: var(--shadow-lg);
+}
+.accent-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid transparent; cursor: pointer; padding: 0;
+    transition: transform .2s ease;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.accent-dot:active { transform: scale(.92); }
+.accent-dot.active {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 2px var(--bg-elevated), inset 0 0 0 1px rgba(255,255,255,.2);
+}
+
+/* --- pill light/dark toggle --- */
+.theme-pill {
+    position: relative;
+    width: 68px; height: 34px; padding: 0;
+    border-radius: 999px; cursor: pointer;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; justify-content: space-between;
+}
+.theme-pill .tp-ico {
+    width: 34px; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); z-index: 1;
+}
+.theme-pill .tp-ico svg { width: 15px; height: 15px; }
+.theme-pill .tp-knob {
+    position: absolute; top: 3px; left: 3px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent-brown);
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.theme-dock.is-dark .theme-pill .tp-knob { transform: translateX(34px); }
+.theme-dock.is-dark .theme-pill .tp-moon { color: var(--text-primary); }
+.theme-dock:not(.is-dark) .theme-pill .tp-sun { color: var(--text-primary); }
+
+/* ---- dashboard light-mode element fixes ---- */
+html[data-theme="light"] .weather-panel {
+    background: var(--gradient-card) !important;
+}
+html[data-theme="light"] .cctv-placeholder {
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+}
+/* finance section keeps its weather-mood accent, but the surface
+   must follow the active base theme so light mode stays readable */
+html[data-theme="light"] body { --finance-surface: rgba(255, 255, 255, 0.92); }

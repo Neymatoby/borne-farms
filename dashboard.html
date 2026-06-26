@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="application-name" content="Borne Farms Invest">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Borne Invest">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description"
+        content="Borne Farms — Own cattle, unlock feed tiers, and watch your herd grow. Geospatial intelligence & live monitoring dashboard.">
+    <title>BORNE FARMS | Smart Cattle Ownership Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#060c1d">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Geospatial file parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist/geotiff.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/shpjs@4.0.4/dist/shp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@5.8.0/dist/togeojson.umd.js"></script>
+</head>
+
+<body class="app-loading">
+    <!-- Preloader — BORNEFARM rollout + cattle head loading sequence -->
+    <div id="preloader">
+        <div class="preloader-inner">
+            <div class="borne-roll" id="borneRoll"></div>
+            <div class="cattle-load-row" id="cattleLoadRow"></div>
+            <div class="loader-status" id="loaderStatus">Initializing…</div>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon-wrap">
+                    <i data-lucide="beef"></i>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-title">BORNE FARMS</span>
+                    <span class="logo-subtitle">Cattle Ownership</span>
+                </div>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="#dashboard" class="nav-link active" data-page="dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#geospatial" class="nav-link" data-page="geospatial">
+                        <i data-lucide="map"></i>
+                        <span>Farm Map</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#cctv" class="nav-link" data-page="cctv">
+                        <i data-lucide="video"></i>
+                        <span>UAV & CCTV</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#livestock" class="nav-link" data-page="livestock">
+                        <i data-lucide="beef"></i>
+                        <span>My Cattle</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#feed" class="nav-link" data-page="feed">
+                        <i data-lucide="wheat"></i>
+                        <span>Feed & Tiers</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#health" class="nav-link" data-page="health">
+                        <i data-lucide="heart-pulse"></i>
+                        <span>Health</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#movement" class="nav-link" data-page="movement">
+                        <i data-lucide="truck"></i>
+                        <span>Movement</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#reports" class="nav-link" data-page="reports">
+                        <i data-lucide="file-bar-chart"></i>
+                        <span>Reports</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#finance" class="nav-link" data-page="finance">
+                        <i data-lucide="wallet"></i>
+                        <span>Invest</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="org-selector">
+                <span class="org-label">Organization</span>
+                <select class="org-select" id="orgSelect">
+                    <option value="borne">BORNE FARMS</option>
+                    <option value="add" disabled>+ Add Organization</option>
+                </select>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i data-lucide="menu"></i>
+                </button>
+                <h1 class="page-title" id="pageTitle">Dashboard</h1>
+            </div>
+            <div class="header-right">
+                <div class="weather-widget" id="weatherWidget">
+                    <i data-lucide="sun" class="weather-icon"></i>
+                    <span class="weather-temp">--°C</span>
+                    <span class="weather-location">Nigeria</span>
+                </div>
+                <button class="notification-btn">
+                    <i data-lucide="bell"></i>
+                    <span class="notification-badge">3</span>
+                </button>
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <i data-lucide="user"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Container -->
+        <div class="page-container" id="pageContainer">
+
+            <!-- ============================== -->
+            <!-- DASHBOARD PAGE -->
+            <!-- ============================== -->
+            <section class="page active" id="dashboardPage">
+                <!-- Customize toolbar -->
+                <div class="customize-toolbar" id="customizeToolbar">
+                    <button class="customize-btn" id="customizeToggle">
+                        <i data-lucide="layout-grid"></i> <span>Customize</span>
+                    </button>
+                    <button class="customize-btn customize-reset" id="customizeReset" style="display:none;">
+                        <i data-lucide="rotate-ccw"></i> <span>Reset Layout</span>
+                    </button>
+                    <button class="customize-btn customize-done" id="customizeDone" style="display:none;">
+                        <i data-lucide="check"></i> <span>Done</span>
+                    </button>
+                </div>
+
+                <!-- Goal & Task Progress -->
+                <div class="dashboard-row widget" data-widget="goals" style="margin-bottom: var(--space-xl);">
+                    <div class="card" style="grid-column: span 2;">
+                        <div class="card-header" style="background: color-mix(in srgb, var(--accent-brown) 7%, transparent); display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; flex-direction: column;">
+                                <h3 class="card-title" style="color: var(--accent-brown-light);">
+                                    <i data-lucide="target"></i>
+                                    Farm Goal & Task Progress
+                                </h3>
+                                <span style="font-size: 0.8rem; color: var(--text-secondary);">Updated Just Now</span>
+                            </div>
+                            <button class="btn btn-secondary" onclick="openModal('updateGoals')" style="padding: var(--space-xs) var(--space-sm); font-size: 0.85rem;">
+                                <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i> Edit Goals
+                            </button>
+                        </div>
+                        <div class="card-body" id="goalProgressContainer" style="display: flex; gap: var(--space-lg);">
+                            <!-- Dynamic content from DashboardModule -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="stats-grid widget" data-widget="stats">
+                    <div class="stat-card stat-brown">
+                        <div class="stat-icon"><i data-lucide="beef"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="totalLivestock">0</span>
+                            <span class="stat-label">Total Cattle</span>
+                        </div>
+                        <div class="stat-trend up"><i data-lucide="trending-up"></i><span>+12%</span></div>
+                    </div>
+                    <div class="stat-card stat-blue">
+                        <div class="stat-icon"><i data-lucide="circle-user"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="maleCount">0</span>
+                            <span class="stat-label">Bulls</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-pink">
+                        <div class="stat-icon"><i data-lucide="circle-user-round"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="femaleCount">0</span>
+                            <span class="stat-label">Cows</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-amber">
+                        <div class="stat-icon"><i data-lucide="baby"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="youngCount">0</span>
+                            <span class="stat-label">Calves</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-purple">
+                        <div class="stat-icon"><i data-lucide="heart"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="pregnantCount">0</span>
+                            <span class="stat-label">Pregnant</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-green">
+                        <div class="stat-icon"><i data-lucide="milk"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="milkProduction">0</span>
+                            <span class="stat-label">Milk (L/day)</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-red">
+                        <div class="stat-icon"><i data-lucide="skull"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="deathsMonth">0</span>
+                            <span class="stat-label">Deaths This Month</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-orange">
+                        <div class="stat-icon"><i data-lucide="bug"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value" id="diseaseCount">0</span>
+                            <span class="stat-label">Disease Cases</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Charts Row: Weather + Geospatial Mini -->
+                <div class="dashboard-row widget" data-widget="weather-map">
+                    <!-- Expanded Weather & AI Advisor Panel -->
+                    <div class="card weather-panel">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-xs);">
+                            <h3 class="card-title"><i data-lucide="cloud-lightning"></i> Weather & AI Advisor</h3>
+                            <div class="weather-tabs" style="display: flex; gap: 2px; background: var(--bg-tertiary); padding: 2px; border-radius: var(--radius-md);">
+                                <button class="weather-tab-btn active" data-tab="weather-current-tab" style="background: none; border: none; color: var(--text-secondary); padding: 4px 8px; border-radius: var(--radius-sm); font-size: 0.75rem; cursor: pointer; font-weight: 500; transition: all 0.2s;">Live</button>
+                                <button class="weather-tab-btn" data-tab="weather-history-tab" style="background: none; border: none; color: var(--text-secondary); padding: 4px 8px; border-radius: var(--radius-sm); font-size: 0.75rem; cursor: pointer; font-weight: 500; transition: all 0.2s;">30d Trend</button>
+                                <button class="weather-tab-btn" data-tab="weather-calendar-tab" style="background: none; border: none; color: var(--text-secondary); padding: 4px 8px; border-radius: var(--radius-sm); font-size: 0.75rem; cursor: pointer; font-weight: 500; transition: all 0.2s;">16d Cal</button>
+                                <button class="weather-tab-btn" data-tab="weather-advisor-tab" style="background: none; border: none; color: var(--text-secondary); padding: 4px 8px; border-radius: var(--radius-sm); font-size: 0.75rem; cursor: pointer; font-weight: 500; transition: all 0.2s;">AI Advisor</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Tab 1: Current & Hourly -->
+                            <div id="weather-current-tab" class="weather-tab-content active">
+                                <div class="weather-main" id="weatherMain" style="margin-bottom: var(--space-md);">
+                                    <div class="weather-current">
+                                        <div class="weather-temp-large">--°C</div>
+                                        <div class="weather-desc">Loading...</div>
+                                        <div class="weather-location-large">
+                                            <i data-lucide="map-pin"></i> Abuja Farm
+                                        </div>
+                                    </div>
+                                    <div class="weather-details" style="padding: var(--space-md); gap: var(--space-sm);">
+                                        <div class="weather-detail">
+                                            <i data-lucide="droplets"></i>
+                                            <span>Humidity: <strong id="humidity">--%</strong></span>
+                                        </div>
+                                        <div class="weather-detail">
+                                            <i data-lucide="wind"></i>
+                                            <span>Wind: <strong id="windSpeed">-- km/h</strong></span>
+                                        </div>
+                                        <div class="weather-detail">
+                                            <i data-lucide="thermometer"></i>
+                                            <span>Feels like: <strong id="feelsLike">--°C</strong></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <h4 style="font-size: 0.8rem; margin-bottom: var(--space-xs); display: flex; align-items: center; gap: 4px; color: var(--text-secondary);"><i data-lucide="clock" style="width:12px; height:12px;"></i> 48-Hour Forecast</h4>
+                                <div class="hourly-forecast-container" style="overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); padding: var(--space-xs); margin-bottom: var(--space-md);">
+                                    <div class="hourly-forecast-track" id="hourlyForecastTrack" style="display: flex; gap: var(--space-xs);">
+                                        <div style="padding: var(--space-sm); color: var(--text-muted); font-size: 0.75rem;">Loading hourly forecast...</div>
+                                    </div>
+                                </div>
+                                <div class="cattle-care-alert weather-safe" id="cattleMovementAdvisoryCard">
+                                    <div class="alert-icon"><i data-lucide="shield-alert"></i></div>
+                                    <div class="alert-content">
+                                        <strong>Cattle Movement Advisory (<span id="movementStatusLabel">LOADING</span>):</strong>
+                                        <p id="movementInstructionText" style="margin: 0; font-size: 0.75rem;">Analyzing current weather conditions...</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 2: Past 30 Days Trend -->
+                            <div id="weather-history-tab" class="weather-tab-content" style="display: none;">
+                                <div class="weather-history-table-container" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                                    <table class="weather-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left;">
+                                        <thead style="position: sticky; top: 0; background: var(--bg-tertiary); z-index: 10;">
+                                            <tr>
+                                                <th style="padding: 6px var(--space-xs); border-bottom: 1px solid var(--border-color);">Date</th>
+                                                <th style="padding: 6px var(--space-xs); border-bottom: 1px solid var(--border-color); text-align:center;">Icon</th>
+                                                <th style="padding: 6px var(--space-xs); border-bottom: 1px solid var(--border-color);">Condition</th>
+                                                <th style="padding: 6px var(--space-xs); border-bottom: 1px solid var(--border-color);">Max</th>
+                                                <th style="padding: 6px var(--space-xs); border-bottom: 1px solid var(--border-color);">Min</th>
+                                                <th style="padding: 6px var(--space-xs); border-bottom: 1px solid var(--border-color);">Rain</th>
+                                                <th style="padding: 6px var(--space-xs); border-bottom: 1px solid var(--border-color);">Wind</th>
+                                                <th style="padding: 6px var(--space-xs); border-bottom: 1px solid var(--border-color);">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="weatherHistoryBody">
+                                            <tr>
+                                                <td colspan="8" style="padding: var(--space-md); text-align: center; color: var(--text-muted);">Loading historical trends...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Tab 3: 16-Day Calendar -->
+                            <div id="weather-calendar-tab" class="weather-tab-content" style="display: none;">
+                                <div class="calendar-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+                                    <h4 id="calendarMonthLabel" style="font-size: 0.8rem; font-weight: 600;">Month</h4>
+                                    <div style="display: flex; gap: var(--space-xs);">
+                                        <button class="btn btn-sm" id="calendarPrevMonth" style="padding: 1px 6px; font-size: 0.75rem;"><i data-lucide="chevron-left" style="width:12px;height:12px;"></i></button>
+                                        <button class="btn btn-sm" id="calendarNextMonth" style="padding: 1px 6px; font-size: 0.75rem;"><i data-lucide="chevron-right" style="width:12px;height:12px;"></i></button>
+                                    </div>
+                                </div>
+                                <div class="calendar-grid" id="weatherCalendarGrid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 2px; background: var(--bg-primary);">
+                                    <div class="cal-hdr" style="text-align: center; font-size: 0.65rem; font-weight: 600; padding: 2px 0; color: var(--text-secondary);">Mon</div>
+                                    <div class="cal-hdr" style="text-align: center; font-size: 0.65rem; font-weight: 600; padding: 2px 0; color: var(--text-secondary);">Tue</div>
+                                    <div class="cal-hdr" style="text-align: center; font-size: 0.65rem; font-weight: 600; padding: 2px 0; color: var(--text-secondary);">Wed</div>
+                                    <div class="cal-hdr" style="text-align: center; font-size: 0.65rem; font-weight: 600; padding: 2px 0; color: var(--text-secondary);">Thu</div>
+                                    <div class="cal-hdr" style="text-align: center; font-size: 0.65rem; font-weight: 600; padding: 2px 0; color: var(--text-secondary);">Fri</div>
+                                    <div class="cal-hdr" style="text-align: center; font-size: 0.65rem; font-weight: 600; padding: 2px 0; color: var(--text-secondary);">Sat</div>
+                                    <div class="cal-hdr" style="text-align: center; font-size: 0.65rem; font-weight: 600; padding: 2px 0; color: var(--text-secondary);">Sun</div>
+                                    <!-- Dynamic calendar cells -->
+                                </div>
+                            </div>
+
+                            <!-- Tab 4: AI Advisor -->
+                            <div id="weather-advisor-tab" class="weather-tab-content" style="display: none;">
+                                <div class="advisor-list" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                                    <!-- Crop recommendation card -->
+                                    <div class="advisor-card" id="aiCropCard" style="background: var(--bg-tertiary); padding: var(--space-md); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs);">
+                                            <h4 style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; margin: 0;"><i data-lucide="sprout" style="width:14px;height:14px;color:var(--accent-green);"></i> Crop Suitability</h4>
+                                            <span id="aiCropVal">--</span>
+                                        </div>
+                                        <div id="aiCropScore" style="font-size: 1.15rem; font-weight: 700; color: var(--accent-green-light); margin-bottom: 2px;">--% Suitability</div>
+                                        <p id="aiCropReason" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: var(--space-xs); line-height: 1.3;">Analyzing weather data...</p>
+                                        <p id="aiCropDetails" style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.3; font-style: italic; border-left: 2px solid var(--accent-green); padding-left: 6px; margin: 0;">Waiting for weather metrics...</p>
+                                        <div id="aiCropAccuracy" style="font-size: 0.6rem; color: var(--text-muted); margin-top: var(--space-sm); border-top: 1px solid rgba(255,255,255,0.05); padding-top: var(--space-xs);">--</div>
+                                    </div>
+
+                                    <!-- Feed regeneration strategy -->
+                                    <div class="advisor-card" style="background: var(--bg-tertiary); padding: var(--space-md); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                                        <h4 style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-xs); display: flex; align-items: center; gap: 4px; margin-top: 0;"><i data-lucide="refresh-cw" style="width:14px;height:14px;color:var(--accent-blue);"></i> Feed Regeneration</h4>
+                                        <div style="margin-bottom: var(--space-xs); font-size: 0.75rem;">
+                                            <span style="color: var(--text-muted);">Strategy:</span> <strong id="regenStrategy">Staggered Rotations</strong>
+                                        </div>
+                                        <div style="margin-bottom: var(--space-xs); font-size: 0.75rem;">
+                                            <span style="color: var(--text-muted);">Timeline:</span> <span id="regenTimeline" style="color: var(--text-secondary);">Plant 25% every 3 weeks</span>
+                                        </div>
+                                        <div style="margin-bottom: var(--space-sm); font-size: 0.75rem;">
+                                            <span style="color: var(--text-muted);">Watering:</span> <span id="regenWater" style="color: var(--text-secondary);">Loading...</span>
+                                        </div>
+                                        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: var(--space-xs);">
+                                            <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: var(--space-xs);">Quick Action Tips</div>
+                                            <ul id="regenTips" style="list-style: none; font-size: 0.7rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px; padding-left: 0; margin: 0;">
+                                                <li>Loading suggestions...</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Mini Geospatial Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="map"></i> Farm Zones Overview</h3>
+                            <a href="#geospatial" class="card-link" data-page="geospatial">Full Map →</a>
+                        </div>
+                        <div class="card-body" style="padding: 0;">
+                            <div id="dashboardMiniMap" style="height: 280px; border-radius: 0 0 var(--radius-lg) var(--radius-lg);"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="dashboard-row widget" data-widget="charts">
+                    <div class="card chart-wide">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="trending-up"></i> Feed Tier vs Growth & Milk
+                                Production</h3>
+                            <select class="chart-filter" id="growthPeriod">
+                                <option value="week">This Week</option>
+                                <option value="month" selected>This Month</option>
+                                <option value="quarter">This Quarter</option>
+                            </select>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="feedGrowthChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Row -->
+                <div class="dashboard-row triple widget" data-widget="activity">
+                    <!-- Live CCTV Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="video"></i> Live Feeds</h3>
+                            <a href="#cctv" class="card-link" data-page="cctv">View All →</a>
+                        </div>
+                        <div class="card-body" style="padding: var(--space-sm);">
+                            <div class="cctv-feed" style="aspect-ratio: 16/10;">
+                                <div class="cctv-placeholder">
+                                    <i data-lucide="video"></i>
+                                    <span>Pasture Zone A — Camera 1</span>
+                                    <span style="font-size: 0.65rem; color: var(--accent-green);">● LIVE</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Movements -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="move"></i> Recent Movements</h3>
+                            <a href="#movement" class="card-link" data-page="movement">View All</a>
+                        </div>
+                        <div class="card-body">
+                            <ul class="activity-list" id="recentMovements">
+                                <!-- Dynamic content -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="zap"></i> Quick Actions</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="quick-actions">
+                                <button class="quick-action-btn" onclick="openModal('addLivestock')">
+                                    <i data-lucide="plus-circle"></i>
+                                    <span>Add Cattle</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="openModal('recordMovement')">
+                                    <i data-lucide="truck"></i>
+                                    <span>Move Cattle</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="openModal('logFeeding')">
+                                    <i data-lucide="wheat"></i>
+                                    <span>Log Feed</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="openModal('reportHealth')">
+                                    <i data-lucide="stethoscope"></i>
+                                    <span>Health Report</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== -->
+            <!-- GEOSPATIAL MAP PAGE -->
+            <!-- ============================== -->
+            <section class="page" id="geospatialPage">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Farm Geospatial Intelligence</h2>
+                        <p class="page-description">Geospatial intelligence platform — load GeoTIFF, GeoJSON, KML, GPX, or Shapefile layers over the surveyed farm boundary.</p>
+                    </div>
+                </div>
+                <div class="card geospatial-pane">
+                    <!-- Geospatial file loader -->
+                    <div class="geo-loader-bar">
+                        <div class="geo-loader-left">
+                            <label class="geo-file-btn">
+                                <i data-lucide="upload-cloud"></i>
+                                <span>Load Geo File</span>
+                                <input type="file" id="geoFileInput" accept=".tif,.tiff,.geotiff,.geojson,.json,.kml,.gpx,.shp,.zip" hidden multiple>
+                            </label>
+                            <span class="geo-loader-hint">GeoTIFF · GeoJSON · KML · GPX · Shapefile</span>
+                        </div>
+                        <div class="geo-layer-list" id="geoLayerList"></div>
+                        <button class="geo-clear-btn" id="geoClearBtn" title="Clear loaded layers">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                    <div id="farmMap" class="map-container" style="height: 550px;"></div>
+                    <div class="map-legend">
+                        <div class="legend-item"><span class="legend-dot" style="background: #5473d0;"></span> Farm Boundary</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: var(--accent-green);"></span> Loaded Vector Layer</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: var(--accent-amber);"></span> GeoTIFF Raster</div>
+                    </div>
+                </div>
+
+                <!-- Zone Statistics -->
+                <div class="stats-grid" style="margin-top: var(--space-xl);">
+                    <div class="stat-card stat-green">
+                        <div class="stat-icon"><i data-lucide="trees"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value">4</span>
+                            <span class="stat-label">Active Pasture Zones</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-brown">
+                        <div class="stat-icon"><i data-lucide="home"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value">6</span>
+                            <span class="stat-label">Paddock Areas</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-blue">
+                        <div class="stat-icon"><i data-lucide="droplets"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value">3</span>
+                            <span class="stat-label">Water Points</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-amber">
+                        <div class="stat-icon"><i data-lucide="wheat"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value">5</span>
+                            <span class="stat-label">Feed Stations</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== -->
+            <!-- LIVE UAV / CCTV PAGE -->
+            <!-- ============================== -->
+            <section class="page" id="cctvPage">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>UAV & CCTV Monitoring</h2>
+                        <p class="page-description">Real-time drone and fixed camera feeds across the farm. The UAV feed uses Shepherd Mode for aerial cattle tracking.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('addCamera')">
+                        <i data-lucide="plus"></i>
+                        Add Camera
+                    </button>
+                </div>
+
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i data-lucide="cpu"></i>
+                            AI Livestock Monitoring – Borne Farms
+                        </h3>
+                    </div>
+                    <div class="card-body" style="display:flex; gap: var(--space-md); align-items:center; flex-wrap:wrap;">
+
+                        <input type="file" id="aiVideoInput" accept="video/*" />
+
+                        <select id="aiCameraSelect" class="form-select" style="max-width: 220px;">
+                            <option value="1">UAV 01 — Drone Feed</option>
+                            <option value="2">CAM 02 — Feeding Station</option>
+                            <option value="3">CAM 03 — Milking Parlor</option>
+                            <option value="4">CAM 04 — Main Gate</option>
+                        </select>
+
+                        <button class="btn btn-primary" onclick="uploadAIVideo()">
+                            <i data-lucide="upload"></i>
+                            Upload & Analyze
+                        </button>
+
+                        <label class="uav-link-toggle" id="uavLinkToggle" title="Toggle UAV proximity link analysis">
+                            <input type="checkbox" id="uavLinkAnalysis" checked onchange="toggleUAVLinkAnalysis(this.checked)">
+                            <span>Link Analysis</span>
+                        </label>
+
+                        <div id="aiStats" style="margin-left:auto; font-weight:600;">
+                            🐄 Cows: 0 | 🧍 Humans: 0
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cctv-grid" id="cctvGrid">
+                    <!-- Camera feeds are rendered from FarmData.cameras by renderCCTVGrid() -->
+                </div>
+
+                <!-- Camera Settings Table -->
+                <div class="card" style="margin-top: var(--space-xl);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="settings"></i> Camera Configuration</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Camera</th>
+                                    <th>Location</th>
+                                    <th>IP Address</th>
+                                    <th>Status</th>
+                                    <th>Resolution</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cameraConfigTableBody">
+                                <!-- Rendered from FarmData.cameras by renderCCTVGrid() -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== -->
+            <!-- LIVESTOCK PAGE -->
+            <!-- ============================== -->
+            <section class="page" id="livestockPage">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>My Cattle Registry</h2>
+                        <p class="page-description">Manage all your owned cattle</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('addLivestock')">
+                        <i data-lucide="plus"></i> Add Cattle
+                    </button>
+                </div>
+
+                <div class="filters-bar">
+                    <div class="search-box">
+                        <i data-lucide="search"></i>
+                        <input type="text" placeholder="Search by ID or name..." id="livestockSearch">
+                    </div>
+                    <select class="filter-select" id="breedFilter">
+                        <option value="">All Breeds</option>
+                        <option value="angus">Angus</option>
+                        <option value="brahman">Brahman</option>
+                        <option value="hereford">Hereford</option>
+                        <option value="holstein">Holstein</option>
+                    </select>
+                    <select class="filter-select" id="genderFilter">
+                        <option value="">All Genders</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="pregnant">Pregnant</option>
+                        <option value="sick">Sick</option>
+                    </select>
+                </div>
+
+                <div class="livestock-grid" id="livestockGrid">
+                    <!-- Dynamic content from JS -->
+                </div>
+
+                <div class="livestock-table-container hidden" id="livestockTable">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Breed</th>
+                                <th>Gender</th>
+                                <th>Age</th>
+                                <th>Weight</th>
+                                <th>Feed Tier</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+                        <tbody id="livestockTableBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ============================== -->
+            <!-- FEED & TIERS PAGE -->
+            <!-- ============================== -->
+            <section class="page" id="feedPage">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Feed Management & Tiers</h2>
+                        <p class="page-description">Unlock higher feed tiers as you grow — better feed translates to
+                            faster growth and higher milk yield.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('logFeeding')">
+                        <i data-lucide="plus"></i> Log Feeding
+                    </button>
+                </div>
+
+                <!-- Feed Tier Cards -->
+                <div class="stats-grid" style="margin-bottom: var(--space-2xl);">
+                    <div class="stat-card stat-brown" style="flex-direction: column; text-align: center; padding: var(--space-xl);">
+                        <div style="font-size: 0.7rem; font-weight: 600; color: var(--accent-brown-light); letter-spacing: 2px; margin-bottom: var(--space-sm);">TIER 1</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: var(--space-xs);">Basic Grazing</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Hay + Natural Pasture</div>
+                        <div style="font-size: 0.7rem; color: var(--accent-green); margin-top: var(--space-sm);">● Unlocked</div>
+                    </div>
+                    <div class="stat-card stat-green" style="flex-direction: column; text-align: center; padding: var(--space-xl);">
+                        <div style="font-size: 0.7rem; font-weight: 600; color: var(--accent-green-light); letter-spacing: 2px; margin-bottom: var(--space-sm);">TIER 2</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: var(--space-xs);">Enhanced Nutrition</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Silage + Grain Mix</div>
+                        <div style="font-size: 0.7rem; color: var(--accent-green); margin-top: var(--space-sm);">● Unlocked</div>
+                    </div>
+                    <div class="stat-card stat-purple" style="flex-direction: column; text-align: center; padding: var(--space-xl);">
+                        <div style="font-size: 0.7rem; font-weight: 600; color: var(--accent-purple-light); letter-spacing: 2px; margin-bottom: var(--space-sm);">TIER 3</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: var(--space-xs);">Premium Growth</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Protein + Supplements</div>
+                        <div style="font-size: 0.7rem; color: var(--accent-amber); margin-top: var(--space-sm);">🔒 5+ Cattle Required</div>
+                    </div>
+                    <div class="stat-card stat-amber" style="flex-direction: column; text-align: center; padding: var(--space-xl);">
+                        <div style="font-size: 0.7rem; font-weight: 600; color: var(--accent-amber-light); letter-spacing: 2px; margin-bottom: var(--space-sm);">TIER 4</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: var(--space-xs);">Elite Yield Max</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Full Spectrum Nutrition</div>
+                        <div style="font-size: 0.7rem; color: var(--accent-red); margin-top: var(--space-sm);">🔒 15+ Cattle Required</div>
+                    </div>
+                </div>
+
+                <!-- Feed Stats -->
+                <div class="feed-stats">
+                    <div class="feed-stat-card">
+                        <div class="feed-stat-icon"><i data-lucide="package"></i></div>
+                        <div class="feed-stat-info">
+                            <span class="feed-stat-value" id="totalFeedStock">0</span>
+                            <span class="feed-stat-unit">kg</span>
+                            <span class="feed-stat-label">Total Feed Stock</span>
+                        </div>
+                    </div>
+                    <div class="feed-stat-card">
+                        <div class="feed-stat-icon"><i data-lucide="utensils"></i></div>
+                        <div class="feed-stat-info">
+                            <span class="feed-stat-value" id="dailyConsumption">0</span>
+                            <span class="feed-stat-unit">kg/day</span>
+                            <span class="feed-stat-label">Daily Consumption</span>
+                        </div>
+                    </div>
+                    <div class="feed-stat-card">
+                        <div class="feed-stat-icon"><i data-lucide="calendar"></i></div>
+                        <div class="feed-stat-info">
+                            <span class="feed-stat-value" id="daysRemaining">0</span>
+                            <span class="feed-stat-unit">days</span>
+                            <span class="feed-stat-label">Stock Duration</span>
+                        </div>
+                    </div>
+                    <div class="feed-stat-card">
+                        <div class="feed-stat-icon"><i data-lucide="trending-up"></i></div>
+                        <div class="feed-stat-info">
+                            <span class="feed-stat-value" id="avgWeightGain">0</span>
+                            <span class="feed-stat-unit">kg/week</span>
+                            <span class="feed-stat-label">Avg Weight Gain</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="bar-chart-3"></i> Feed by Tier</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="feedByTypeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="warehouse"></i> Feed Inventory</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="inventory-list" id="feedInventory">
+                                <!-- Dynamic content -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== -->
+            <!-- HEALTH PAGE -->
+            <!-- ============================== -->
+            <section class="page" id="healthPage">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Health & Breeding</h2>
+                        <p class="page-description">Monitor cattle health, diseases, and breeding status</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('reportHealth')">
+                        <i data-lucide="plus"></i> Report Health Issue
+                    </button>
+                </div>
+
+                <div class="health-stats">
+                    <div class="health-stat-card healthy">
+                        <i data-lucide="heart"></i>
+                        <span class="health-stat-value" id="healthyCount">0</span>
+                        <span class="health-stat-label">Healthy</span>
+                    </div>
+                    <div class="health-stat-card sick">
+                        <i data-lucide="thermometer"></i>
+                        <span class="health-stat-value" id="sickCount">0</span>
+                        <span class="health-stat-label">Sick</span>
+                    </div>
+                    <div class="health-stat-card pregnant">
+                        <i data-lucide="baby"></i>
+                        <span class="health-stat-value" id="pregnantHealthCount">0</span>
+                        <span class="health-stat-label">Pregnant</span>
+                    </div>
+                    <div class="health-stat-card vaccinated">
+                        <i data-lucide="syringe"></i>
+                        <span class="health-stat-value" id="vaccinatedCount">0</span>
+                        <span class="health-stat-label">Vaccinated (30d)</span>
+                    </div>
+                </div>
+
+                <div class="dashboard-row">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="bug"></i> Active Disease Cases</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="disease-list" id="diseaseList">
+                                <!-- Dynamic content -->
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="calendar-heart"></i> Pregnancy Tracker</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="pregnancy-list" id="pregnancyList">
+                                <!-- Dynamic content -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== -->
+            <!-- MOVEMENT PAGE -->
+            <!-- ============================== -->
+            <section class="page" id="movementPage">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Movement Tracking</h2>
+                        <p class="page-description">Track cattle locations and zone transfers</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('recordMovement')">
+                        <i data-lucide="plus"></i> Record Movement
+                    </button>
+                </div>
+
+                <div class="location-overview">
+                    <div class="location-card">
+                        <div class="location-icon pen"><i data-lucide="home"></i></div>
+                        <div class="location-info">
+                            <span class="location-count" id="penCount">0</span>
+                            <span class="location-name">In Paddock</span>
+                        </div>
+                    </div>
+                    <div class="location-card">
+                        <div class="location-icon field"><i data-lucide="trees"></i></div>
+                        <div class="location-info">
+                            <span class="location-count" id="fieldCount">0</span>
+                            <span class="location-name">In Pasture</span>
+                        </div>
+                    </div>
+                    <div class="location-card">
+                        <div class="location-icon transport"><i data-lucide="truck"></i></div>
+                        <div class="location-info">
+                            <span class="location-count" id="transportCount">0</span>
+                            <span class="location-name">In Transport</span>
+                        </div>
+                    </div>
+                    <div class="location-card">
+                        <div class="location-icon quarantine"><i data-lucide="shield-alert"></i></div>
+                        <div class="location-info">
+                            <span class="location-count" id="quarantineCount">0</span>
+                            <span class="location-name">Quarantine</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Movement History</h3>
+                        <input type="date" class="date-filter" id="movementDateFilter">
+                    </div>
+                    <div class="card-body">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date/Time</th>
+                                    <th>Cattle ID</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Reason</th>
+                                    <th>Handler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="movementHistory">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== -->
+            <!-- REPORTS PAGE -->
+            <!-- ============================== -->
+            <section class="page" id="reportsPage">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Reports & Analytics</h2>
+                        <p class="page-description">Generate comprehensive farm reports</p>
+                    </div>
+                </div>
+                <div class="reports-grid">
+                    <div class="report-card" onclick="generateReport('monthly')">
+                        <div class="report-icon"><i data-lucide="calendar"></i></div>
+                        <h3>Monthly Summary</h3>
+                        <p>Births, deaths, movements, and health</p>
+                    </div>
+                    <div class="report-card" onclick="generateReport('feed')">
+                        <div class="report-icon"><i data-lucide="wheat"></i></div>
+                        <h3>Feed Analysis</h3>
+                        <p>Consumption trends and tier performance</p>
+                    </div>
+                    <div class="report-card" onclick="generateReport('health')">
+                        <div class="report-icon"><i data-lucide="heart-pulse"></i></div>
+                        <h3>Health Report</h3>
+                        <p>Disease cases and treatments</p>
+                    </div>
+                    <div class="report-card" onclick="generateReport('inventory')">
+                        <div class="report-icon"><i data-lucide="clipboard-list"></i></div>
+                        <h3>Inventory Report</h3>
+                        <p>Current livestock and feed stock</p>
+                    </div>
+                </div>
+                <div class="card report-preview hidden" id="reportPreview" style="margin-top: var(--space-xl);">
+                    <div class="card-header">
+                        <h3 class="card-title" id="reportTitle">Report</h3>
+                        <button class="btn btn-secondary" onclick="printReport()">
+                            <i data-lucide="printer"></i> Print
+                        </button>
+                    </div>
+                    <div class="card-body" id="reportContent">
+                        <!-- Dynamic report content -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== -->
+            <!-- FINANCE PAGE -->
+            <!-- ============================== -->
+            <section class="page" id="financePage">
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h2>Cattle Investment</h2>
+                        <p class="page-description">Buy cattle units, unlock feed tiers, track weight growth, lock holdings, and trade through Borne Farms escrow.</p>
+                    </div>
+                </div>
+                <div class="finance-app-shell">
+                    <div class="finance-phone-frame">
+                        <div class="finance-hero">
+                            <div class="finance-hero-copy">
+                                <span class="finance-kicker">BORNE FARMS INVEST</span>
+                                <h3>Own a piece of real cattle stock.</h3>
+                                <p>Digital ownership tied to live farm records, feed programs, and buyer offers.</p>
+                            </div>
+                            <div class="finance-weather-chip" id="financeWeatherChip">
+                                <i data-lucide="cloud-sun"></i>
+                                <span>Weather adaptive</span>
+                            </div>
+                        </div>
+
+                        <div class="finance-summary-grid" id="financeSummaryGrid"></div>
+
+                        <div class="finance-tabs" role="tablist" aria-label="Investment sections">
+                            <button class="finance-tab active" data-finance-tab="market" onclick="FinanceModule.switchTab('market')" title="Breed market">
+                                <i data-lucide="shopping-bag"></i>
+                            </button>
+                            <button class="finance-tab" data-finance-tab="portfolio" onclick="FinanceModule.switchTab('portfolio')" title="Portfolio">
+                                <i data-lucide="line-chart"></i>
+                            </button>
+                            <button class="finance-tab" data-finance-tab="offers" onclick="FinanceModule.switchTab('offers')" title="Buyer offers">
+                                <i data-lucide="handshake"></i>
+                            </button>
+                            <button class="finance-tab" data-finance-tab="rails" onclick="FinanceModule.switchTab('rails')" title="Payments and auth">
+                                <i data-lucide="shield-check"></i>
+                            </button>
+                        </div>
+
+                        <div class="finance-tab-panel active" id="financeMarketPanel">
+                            <div class="finance-section-heading">
+                                <h3>Breed Market</h3>
+                                <button class="icon-btn" onclick="openModal('authSetup')" title="Auth and KYC">
+                                    <i data-lucide="fingerprint"></i>
+                                </button>
+                            </div>
+                            <div class="breed-market" id="breedMarket"></div>
+                        </div>
+
+                        <div class="finance-tab-panel" id="financePortfolioPanel">
+                            <div class="finance-section-heading">
+                                <h3>My Cattle Units</h3>
+                                <button class="btn btn-secondary compact-btn" onclick="openModal('lockInvestment')">
+                                    <i data-lucide="lock"></i> Lock
+                                </button>
+                            </div>
+                            <div class="portfolio-list" id="portfolioList"></div>
+                        </div>
+
+                        <div class="finance-tab-panel" id="financeOffersPanel">
+                            <div class="finance-section-heading">
+                                <h3>Buyer Offers</h3>
+                                <button class="btn btn-secondary compact-btn" onclick="openModal('makeOffer')">
+                                    <i data-lucide="plus"></i> Offer
+                                </button>
+                            </div>
+                            <div class="offer-list" id="offerList"></div>
+                        </div>
+
+                        <div class="finance-tab-panel" id="financeRailsPanel">
+                            <div class="finance-section-heading">
+                                <h3>Payments & Auth</h3>
+                                <button class="icon-btn" onclick="openModal('paymentCheckout')" title="New payment">
+                                    <i data-lucide="credit-card"></i>
+                                </button>
+                            </div>
+                            <div class="payment-rail-list" id="paymentRailList"></div>
+                            <div class="auth-pipeline" id="authPipeline"></div>
+                        </div>
+                    </div>
+
+                    <div class="finance-pipeline">
+                        <div class="pipeline-band">
+                            <span>1</span>
+                            <strong>Investor onboarding</strong>
+                            <p>Phone/email OTP, passkey, BVN/NIN KYC, sanctions and risk checks.</p>
+                        </div>
+                        <div class="pipeline-band">
+                            <span>2</span>
+                            <strong>Escrow purchase</strong>
+                            <p>Paystack and Flutterwave settle Nigerian and African payments into Borne Farms escrow.</p>
+                        </div>
+                        <div class="pipeline-band">
+                            <span>3</span>
+                            <strong>Farm-backed growth</strong>
+                            <p>Breed, feed tier, weight, health, CCTV, and movement data stay in the existing farm dashboard.</p>
+                        </div>
+                        <div class="pipeline-band">
+                            <span>4</span>
+                            <strong>Exit or lock</strong>
+                            <p>Accept marketplace offers, request payout, or lock holdings for disciplined long-term investing.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row hidden">
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Recent Expenses</h3></div>
+                        <div class="card-body">
+                            <ul style="list-style: none;">
+                                <li style="padding: var(--space-sm) 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+                                    <span>Premium Feed (Tier 2)</span> <span style="color: var(--accent-red);">-₦85,000</span>
+                                </li>
+                                <li style="padding: var(--space-sm) 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+                                    <span>Veterinary Checkup</span> <span style="color: var(--accent-red);">-₦45,000</span>
+                                </li>
+                                <li style="padding: var(--space-sm) 0; display: flex; justify-content: space-between;">
+                                    <span>Pasture Maintenance</span> <span style="color: var(--accent-red);">-₦32,000</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Cattle Portfolio Value</h3></div>
+                        <div class="card-body">
+                            <div style="font-size: 2rem; font-weight: bold; color: var(--accent-green); margin-bottom: var(--space-md);">
+                                ₦2,450,000
+                                <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:normal;">estimated</span>
+                            </div>
+                            <button class="btn btn-primary" style="width: 100%;"><i data-lucide="plus"></i> Add Investment</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Add Cattle</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic form content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/data.js"></script>
+    <script src="js/weather.js"></script>
+    <script src="js/crop-advisor.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/geospatial.js"></script>
+    <script src="js/livestock.js"></script>
+    <script src="js/movement.js"></script>
+    <script src="js/health.js"></script>
+    <script src="js/feed.js"></script>
+    <script src="js/finance.js"></script>
+    <script src="js/customize.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered successfully!', reg))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
+        }
+    </script>
+    <script>
+        const AI_BACKEND_URL = 'http://127.0.0.1:5000';
+        let aiStatsInterval = null;
+
+        // Render CCTV grid from FarmData.cameras (the canonical camera data structure)
+        function renderCCTVGrid() {
+            const cameras = (typeof FarmData !== 'undefined' && FarmData.cameras) ? FarmData.cameras : [];
+            const grid = document.getElementById('cctvGrid');
+            const select = document.getElementById('aiCameraSelect');
+            if (!grid) return;
+
+            grid.innerHTML = '';
+            if (select) select.innerHTML = '';
+
+            cameras.forEach((cam, idx) => {
+                const cameraNum = String(idx + 1);
+                const isUAV = cam.id === 'uav01' || idx === 0;
+                const statusClass = cam.status === 'online' ? '' : 'offline';
+                const feedId = `aiVideoFeed${cameraNum}`;
+                const placeholderId = `aiPlaceholder${cameraNum}`;
+
+                const card = document.createElement('div');
+                card.className = `cctv-feed ${isUAV ? 'uav-feed' : ''}`;
+                card.dataset.camera = cameraNum;
+                card.dataset.cameraId = cam.id;
+                card.innerHTML = `
+                    <img id="${feedId}"
+                         src=""
+                         style="width:100%; height:100%; object-fit:cover; display:none;" />
+                    <div class="cctv-placeholder" id="${placeholderId}">
+                        <i data-lucide="${isUAV ? 'drone' : 'video'}"></i>
+                        <span>${isUAV ? 'Upload Drone Video for Shepherd Mode' : cam.name}</span>
+                        ${cam.status === 'offline' ? '<span style="font-size:0.65rem;color:var(--accent-red);">● OFFLINE</span>' : ''}
+                    </div>
+                    <div class="cctv-overlay">
+                        ${isUAV ? '<div class="feed-type-badge">Shepherd Mode</div>' : ''}
+                        <div class="cctv-label">
+                            <span>${isUAV ? 'UAV 01' : cam.id.toUpperCase()} — ${cam.name}</span>
+                            <span class="cctv-status ${statusClass}"><span class="live-dot"></span> ${cam.status === 'online' ? 'LIVE' : 'OFFLINE'}</span>
+                        </div>
+                    </div>
+                    <button class="cctv-expand-btn"><i data-lucide="maximize-2"></i></button>
+                `;
+                grid.appendChild(card);
+
+                // Add to upload select
+                if (select) {
+                    const opt = document.createElement('option');
+                    opt.value = cameraNum;
+                    opt.textContent = `${isUAV ? 'UAV 01' : cam.id.toUpperCase()} — ${cam.name}`;
+                    select.appendChild(opt);
+                }
+            });
+
+            // Render camera config table from the same data structure
+            const tableBody = document.getElementById('cameraConfigTableBody');
+            if (tableBody) {
+                tableBody.innerHTML = '';
+                cameras.forEach((cam, idx) => {
+                    const isOnline = cam.status === 'online';
+                    const label = isUAVById(cam.id) || idx === 0 ? 'UAV 01' : cam.id.toUpperCase();
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${label}</td>
+                        <td>${cam.name}</td>
+                        <td style="color: var(--text-muted);">${cam.ip}</td>
+                        <td><span style="color: ${isOnline ? 'var(--accent-green)' : 'var(--accent-red)'};">● ${isOnline ? 'Online' : 'Offline'}</span></td>
+                        <td>${cam.resolution}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function isUAVById(id) {
+            return id === 'uav01';
+        }
+
+        // Render on first load and whenever data changes
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderCCTVGrid);
+        } else {
+            renderCCTVGrid();
+        }
+
+        async function uploadAIVideo() {
+            const input = document.getElementById('aiVideoInput');
+            const cameraSelect = document.getElementById('aiCameraSelect');
+            const cameraId = cameraSelect ? cameraSelect.value : '1';
+            const feed = document.getElementById(getAIFeedId(cameraId));
+            const placeholder = document.getElementById(getAIPlaceholderId(cameraId));
+            const stats = document.getElementById('aiStats');
+
+            if (!input || !input.files || !input.files[0]) {
+                if (typeof showToast === 'function') {
+                    showToast('Please select a video first.', 'error');
+                } else {
+                    alert('Please select a video first.');
+                }
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('video', input.files[0]);
+            formData.append('camera', cameraId);
+
+            try {
+                stats.textContent = `Processing ${getAIFeedName(cameraId)} video...`;
+
+                const response = await fetch(`${AI_BACKEND_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Upload failed with status ${response.status}`);
+                }
+
+                let result = {};
+                try {
+                    result = await response.json();
+                } catch (error) {
+                    result = {};
+                }
+
+                const streamUrl = result.stream_url || result.streamUrl || `${AI_BACKEND_URL}/video_feed/${cameraId}`;
+                feed.src = `${streamUrl}${streamUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+                feed.style.display = 'block';
+                placeholder.style.display = 'none';
+
+                updateAIStats(result);
+                startAIStatsPolling(result.counts_url || result.countsUrl || `${AI_BACKEND_URL}/counts`);
+
+                if (typeof showToast === 'function') {
+                    showToast(`AI video analysis started for ${getAIFeedName(cameraId)}.`, 'success');
+                }
+            } catch (error) {
+                console.error('AI video upload failed:', error);
+                stats.textContent = '🐄 Cows: 0 | 🧍 Humans: 0';
+                const isNetworkError = error.message && (error.message.includes('fetch') || error.message.includes('Failed') || error.message.includes('Network'));
+                const message = isNetworkError
+                    ? 'Could not connect to the AI backend on 127.0.0.1:5000.'
+                    : `Analysis failed: ${error.message}`;
+                if (typeof showToast === 'function') {
+                    showToast(message, 'error');
+                } else {
+                    alert(message);
+                }
+            }
+        }
+
+        async function toggleUAVLinkAnalysis(enabled) {
+            try {
+                const response = await fetch(`${AI_BACKEND_URL}/uav_link_analysis`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (typeof showToast === 'function') {
+                        showToast(`UAV Link Analysis ${data.uav_link_analysis ? 'enabled' : 'disabled'}`, 'success');
+                    }
+                }
+            } catch (error) {
+                console.warn('UAV link analysis toggle failed:', error);
+            }
+        }
+
+        function getAIFeedId(cameraId) {
+            return `aiVideoFeed${cameraId}`;
+        }
+
+        function getAIPlaceholderId(cameraId) {
+            return `aiPlaceholder${cameraId}`;
+        }
+
+        function getAIFeedName(cameraId) {
+            return cameraId === '1' ? 'UAV 01 Drone Feed' : `CAM ${cameraId.padStart(2, '0')}`;
+        }
+
+        function updateAIStats(data = {}) {
+            const stats = document.getElementById('aiStats');
+            if (!stats) return;
+
+            const totals = data.totals || data.total || data;
+            const cows = totals.cows ?? totals.cow_count ?? totals.cowCount ?? totals.cattle ?? 0;
+            const humans = totals.humans ?? totals.human_count ?? totals.humanCount ?? totals.people ?? 0;
+            stats.textContent = `🐄 Cows: ${cows} | 🧍 Humans: ${humans}`;
+        }
+
+        function startAIStatsPolling(countsUrl) {
+            if (aiStatsInterval) {
+                clearInterval(aiStatsInterval);
+            }
+
+            aiStatsInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${countsUrl}${countsUrl.includes('?') ? '&' : '?'}t=${Date.now()}`);
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    updateAIStats(data);
+                } catch (error) {
+                    console.warn('AI stats update failed:', error);
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
