@@ -27,7 +27,16 @@ const FeedModule = {
         setVal('totalFeedStock', totalStock.toLocaleString());
         setVal('dailyConsumption', dailyTotal.toLocaleString());
         setVal('daysRemaining', dailyTotal > 0 ? Math.floor(totalStock / dailyTotal) : '∞');
-        setVal('avgWeightGain', '0');
+        // Calculate avg weight gain from weight history
+        const wh = FarmData.weightHistory;
+        if (wh && wh.length >= 2) {
+            const gain = wh[wh.length - 1].avg - wh[0].avg;
+            const weeks = wh[wh.length - 1].week - wh[0].week;
+            const perWeek = weeks > 0 ? (gain / weeks).toFixed(1) : '0';
+            setVal('avgWeightGain', perWeek);
+        } else {
+            setVal('avgWeightGain', '0');
+        }
     },
 
     initCharts() {
@@ -36,13 +45,14 @@ const FeedModule = {
 
         const labels = Object.values(FeedLabels);
         const data = Object.values(FarmData.feedInventory).map(f => f.quantity);
+        // Arva palette
         const colors = [
-            'rgba(95,160,82,0.7)',
-            'rgba(160,114,74,0.7)',
-            'rgba(212,160,23,0.7)',
-            'rgba(139,111,192,0.7)',
-            'rgba(74,142,194,0.7)',
-            'rgba(194,106,138,0.7)'
+            '#07503f',  // forest
+            '#7e9a3c',  // olive
+            '#c7913c',  // amber
+            '#b2cee7',  // sky
+            '#c3cda7',  // moss
+            '#fceace'   // peach
         ];
 
         this.feedByTypeChart = new Chart(ctx, {
@@ -52,7 +62,7 @@ const FeedModule = {
                 datasets: [{
                     data: data,
                     backgroundColor: colors,
-                    borderColor: '#1e1b15',
+                    borderColor: '#ffffff',
                     borderWidth: 2,
                     hoverOffset: 8
                 }]
@@ -64,7 +74,7 @@ const FeedModule = {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            color: '#6b6356',
+                            color: '#6d6d6d',
                             font: { family: 'Inter', size: 11 },
                             padding: 15
                         }
@@ -82,7 +92,7 @@ const FeedModule = {
         list.innerHTML = Object.entries(FarmData.feedInventory).map(([key, feed]) => {
             const label = FeedLabels[key] || key;
             return `
-                <li style="padding:var(--space-sm) 0;border-bottom:1px solid rgba(51,48,42,0.4);display:flex;justify-content:space-between;align-items:center;">
+                <li style="padding:var(--space-sm) 0;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
                     <div>
                         <strong>${label}</strong>
                         <div style="font-size:0.75rem;color:var(--text-muted);">Tier ${feed.tier} • ₦${feed.costPerKg}/kg</div>
@@ -110,6 +120,11 @@ const FeedModule = {
         showNotification('Feeding logged successfully', 'success');
         this.updateStats();
         this.renderInventory();
+        if (this.feedByTypeChart) {
+            this.feedByTypeChart.data.datasets[0].data = Object.values(FarmData.feedInventory).map(f => f.quantity);
+            this.feedByTypeChart.update();
+        }
+        if (typeof DashboardModule !== 'undefined') DashboardModule.refresh();
         lucide.createIcons();
     }
 };

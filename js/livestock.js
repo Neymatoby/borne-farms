@@ -40,11 +40,11 @@ const LivestockModule = {
             return `
                 <div class="livestock-card">
                     <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg);">
-                        <div style="width:44px;height:44px;border-radius:var(--radius-md);background:rgba(160,114,74,0.1);display:flex;align-items:center;justify-content:center;">
+                        <div style="width:44px;height:44px;border-radius:var(--radius-md);background:color-mix(in srgb, var(--accent-${cat.accent}) 12%, transparent);display:flex;align-items:center;justify-content:center;">
                             <i data-lucide="${cat.icon}" style="width:22px;height:22px;color:var(--accent-${cat.accent}-light);"></i>
                         </div>
                         <div>
-                            <div style="font-size:1.4rem;font-weight:700;">${data.count}</div>
+                            <div style="font-size:1.6rem;font-weight:600;font-family:var(--serif);">${data.count}</div>
                             <div style="font-size:0.8rem;color:var(--text-secondary);">${cat.label}</div>
                         </div>
                     </div>
@@ -76,7 +76,7 @@ const LivestockModule = {
         showNotification(`Added ${count} ${SubCategoryLabels[category]?.name || category}`, 'success');
 
         this.renderGrid();
-        DashboardModule.updateStats();
+        DashboardModule.refresh();
         lucide.createIcons();
     }
 };

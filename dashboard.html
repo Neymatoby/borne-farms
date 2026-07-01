@@ -14,16 +14,35 @@
     <title>BORNE FARMS | Smart Cattle Ownership Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cormorant+Garamond:wght@400;500;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="theme.css">
     <script src="theme.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#060c1d">
-    <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="logo.png" sizes="auto">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Immediate auth redirect: if no token, go to login before dashboard renders
+        if (!localStorage.getItem('borne_auth_token')) {
+            window.location.replace('login.html');
+        }
+    </script>
+    <script>
+        /* Arva-themed Chart.js defaults — applied before any chart is created */
+        if (window.Chart) {
+            Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
+            Chart.defaults.font.size = 12;
+            Chart.defaults.color = '#353535';                       /* tick / label text */
+            Chart.defaults.borderColor = 'rgba(33,37,41,0.10)';     /* light gridlines */
+            Chart.defaults.plugins.legend.labels.color = '#353535';
+            /* Arva palette modules can opt into for dataset colors */
+            window.ARVA_CHART_PALETTE = ['#07503f', '#7e9a3c', '#b2cee7', '#fceace', '#e8fe85', '#6d6d6d'];
+        }
+    </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Geospatial file parsing -->
@@ -33,6 +52,24 @@
 </head>
 
 <body class="app-loading">
+    <!-- Auth gate: shown when no valid session -->
+    <div id="authGate" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--forest,#07503f);align-items:center;justify-content:center;color:#fff;">
+        <div style="width:100%;max-width:420px;padding:2rem;text-align:center;">
+            <img src="assets/borne-farms-logo-transparent.png" alt="Borne Farms" style="height:80px;width:auto;margin-bottom:1.5rem;">
+            <h1 style="font-family:var(--serif);font-weight:300;font-size:2.2rem;margin-bottom:0.5rem;">Welcome to Borne Farms</h1>
+            <p style="opacity:0.85;margin-bottom:1.5rem;">Sign in to manage your farm dashboard.</p>
+            <form id="loginForm" style="display:flex;flex-direction:column;gap:1rem;text-align:left;">
+                <label style="font-size:0.8rem;opacity:0.8;">Email</label>
+                <input type="email" id="loginEmail" value="manager@bornefarms.com" required style="padding:12px 16px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:1rem;outline:none;">
+                <label style="font-size:0.8rem;opacity:0.8;">Password</label>
+                <input type="password" id="loginPassword" value="borne123" required style="padding:12px 16px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:1rem;outline:none;">
+                <button type="submit" style="margin-top:0.5rem;padding:14px;background:#e8fe85;color:#07503f;border:none;font-weight:600;font-size:1rem;cursor:pointer;">Sign In</button>
+                <div id="loginError" style="color:#ff9d9d;font-size:0.85rem;display:none;"></div>
+            </form>
+            <p style="margin-top:1.5rem;font-size:0.75rem;opacity:0.6;">Demo account: manager@bornefarms.com / borne123</p>
+        </div>
+    </div>
+
     <!-- Preloader — BORNEFARM rollout + cattle head loading sequence -->
     <div id="preloader">
         <div class="preloader-inner">
@@ -42,24 +79,12 @@
         </div>
     </div>
 
-    <!-- Sidebar Overlay -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="logo">
-                <div class="logo-icon-wrap">
-                    <i data-lucide="beef"></i>
-                </div>
-                <div class="logo-text">
-                    <span class="logo-title">BORNE FARMS</span>
-                    <span class="logo-subtitle">Cattle Ownership</span>
-                </div>
-            </div>
-            <button class="sidebar-toggle" id="sidebarToggle">
-                <i data-lucide="x"></i>
-            </button>
+            <a href="landing-arva.html" class="logo sidebar-logo">
+                <img src="assets/borne-farms-logo-transparent.png?v=2" alt="Borne Farms" class="logo-img">
+            </a>
         </div>
 
         <nav class="sidebar-nav">
@@ -118,6 +143,12 @@
                         <span>Invest</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="#intelligence" class="nav-link" data-page="intelligence">
+                        <i data-lucide="brain-circuit"></i>
+                        <span>Intelligence</span>
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -126,7 +157,6 @@
                 <span class="org-label">Organization</span>
                 <select class="org-select" id="orgSelect">
                     <option value="borne">BORNE FARMS</option>
-                    <option value="add" disabled>+ Add Organization</option>
                 </select>
             </div>
         </div>
@@ -137,10 +167,11 @@
         <!-- Top Header -->
         <header class="top-header">
             <div class="header-left">
-                <button class="mobile-menu-btn" id="mobileMenuBtn">
-                    <i data-lucide="menu"></i>
+                <button class="sidebar-toggle-btn" id="desktopSidebarToggle" aria-expanded="true" aria-label="Toggle sidebar" title="Toggle sidebar">
+                    <i data-lucide="panel-left-close" class="icon-open"></i>
+                    <i data-lucide="panel-left-open" class="icon-closed"></i>
                 </button>
-                <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                <img src="assets/borne-farms-logo-dark-transparent.png" alt="Borne Farms" class="header-logo">
             </div>
             <div class="header-right">
                 <div class="weather-widget" id="weatherWidget">
@@ -148,13 +179,37 @@
                     <span class="weather-temp">--°C</span>
                     <span class="weather-location">Nigeria</span>
                 </div>
-                <button class="notification-btn">
-                    <i data-lucide="bell"></i>
-                    <span class="notification-badge">3</span>
-                </button>
-                <div class="user-menu">
-                    <div class="user-avatar">
-                        <i data-lucide="user"></i>
+                <div class="header-dropdown-wrap">
+                    <button class="notification-btn" id="notificationBtn" aria-label="Notifications">
+                        <i data-lucide="bell"></i>
+                        <span class="notification-badge" id="notificationBadge">0</span>
+                    </button>
+                    <div class="notification-dropdown" id="notificationDropdown" style="display:none;">
+                        <div class="dropdown-header">Notifications</div>
+                        <ul class="notification-list" id="notificationList"></ul>
+                    </div>
+                </div>
+                <div class="header-dropdown-wrap">
+                    <div class="user-menu" id="userMenuBtn" role="button" tabindex="0" aria-label="User menu">
+                        <div class="user-avatar">
+                            <i data-lucide="user"></i>
+                        </div>
+                    </div>
+                    <div class="user-dropdown" id="userDropdown" style="display:none;">
+                        <div class="dropdown-user-info">
+                            <strong id="headerUserName">Farm Manager</strong>
+                            <span id="headerUserEmail">manager@bornefarms.com</span>
+                        </div>
+                        <a href="#" class="dropdown-item" onclick="event.preventDefault();openModal('userProfile');">
+                            <i data-lucide="user-circle"></i> Profile
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="event.preventDefault();openModal('userSettings');">
+                            <i data-lucide="settings"></i> Settings
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="landing-arva.html" class="dropdown-item" onclick="logout();">
+                            <i data-lucide="log-out"></i> Sign out
+                        </a>
                     </div>
                 </div>
             </div>
@@ -183,13 +238,13 @@
                 <!-- Goal & Task Progress -->
                 <div class="dashboard-row widget" data-widget="goals" style="margin-bottom: var(--space-xl);">
                     <div class="card" style="grid-column: span 2;">
-                        <div class="card-header" style="background: color-mix(in srgb, var(--accent-brown) 7%, transparent); display: flex; justify-content: space-between; align-items: center;">
+                        <div class="card-header goal-card-header">
                             <div style="display: flex; flex-direction: column;">
-                                <h3 class="card-title" style="color: var(--accent-brown-light);">
+                                <h3 class="card-title goal-card-title">
                                     <i data-lucide="target"></i>
                                     Farm Goal & Task Progress
                                 </h3>
-                                <span style="font-size: 0.8rem; color: var(--text-secondary);">Updated Just Now</span>
+                                <span class="goal-card-subtitle">Updated Just Now</span>
                             </div>
                             <button class="btn btn-secondary" onclick="openModal('updateGoals')" style="padding: var(--space-xs) var(--space-sm); font-size: 0.85rem;">
                                 <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i> Edit Goals
@@ -206,58 +261,86 @@
                     <div class="stat-card stat-brown">
                         <div class="stat-icon"><i data-lucide="beef"></i></div>
                         <div class="stat-content">
-                            <span class="stat-value" id="totalLivestock">0</span>
-                            <span class="stat-label">Total Cattle</span>
+                            <span class="stat-value skeleton" id="totalLivestock">0</span>
+                            <span class="stat-label skeleton">Total Cattle</span>
                         </div>
                         <div class="stat-trend up"><i data-lucide="trending-up"></i><span>+12%</span></div>
-                    </div>
-                    <div class="stat-card stat-blue">
-                        <div class="stat-icon"><i data-lucide="circle-user"></i></div>
-                        <div class="stat-content">
-                            <span class="stat-value" id="maleCount">0</span>
-                            <span class="stat-label">Bulls</span>
-                        </div>
-                    </div>
-                    <div class="stat-card stat-pink">
-                        <div class="stat-icon"><i data-lucide="circle-user-round"></i></div>
-                        <div class="stat-content">
-                            <span class="stat-value" id="femaleCount">0</span>
-                            <span class="stat-label">Cows</span>
-                        </div>
-                    </div>
-                    <div class="stat-card stat-amber">
-                        <div class="stat-icon"><i data-lucide="baby"></i></div>
-                        <div class="stat-content">
-                            <span class="stat-value" id="youngCount">0</span>
-                            <span class="stat-label">Calves</span>
-                        </div>
-                    </div>
-                    <div class="stat-card stat-purple">
-                        <div class="stat-icon"><i data-lucide="heart"></i></div>
-                        <div class="stat-content">
-                            <span class="stat-value" id="pregnantCount">0</span>
-                            <span class="stat-label">Pregnant</span>
-                        </div>
                     </div>
                     <div class="stat-card stat-green">
                         <div class="stat-icon"><i data-lucide="milk"></i></div>
                         <div class="stat-content">
-                            <span class="stat-value" id="milkProduction">0</span>
-                            <span class="stat-label">Milk (L/day)</span>
+                            <span class="stat-value skeleton" id="milkProduction">0</span>
+                            <span class="stat-label skeleton">Milk (L/day)</span>
                         </div>
                     </div>
-                    <div class="stat-card stat-red">
-                        <div class="stat-icon"><i data-lucide="skull"></i></div>
+                    <div class="stat-card stat-pink">
+                        <div class="stat-icon"><i data-lucide="heart"></i></div>
                         <div class="stat-content">
-                            <span class="stat-value" id="deathsMonth">0</span>
-                            <span class="stat-label">Deaths This Month</span>
+                            <span class="stat-value skeleton" id="pregnantCount">0</span>
+                            <span class="stat-label skeleton">Pregnant</span>
                         </div>
                     </div>
                     <div class="stat-card stat-orange">
                         <div class="stat-icon"><i data-lucide="bug"></i></div>
                         <div class="stat-content">
-                            <span class="stat-value" id="diseaseCount">0</span>
-                            <span class="stat-label">Disease Cases</span>
+                            <span class="stat-value skeleton" id="diseaseCount">0</span>
+                            <span class="stat-label skeleton">Disease Cases</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-red">
+                        <div class="stat-icon"><i data-lucide="skull"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-value skeleton" id="deathsMonth">0</span>
+                            <span class="stat-label skeleton">Deaths This Month</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Insights Row: Herd Composition + Milk Trend + Finance Summary -->
+                <div class="dashboard-row triple widget" data-widget="insights">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="pie-chart"></i> Herd Composition</h3>
+                        </div>
+                        <div class="card-body" style="display:flex; align-items:center; justify-content:center; min-height:240px;">
+                            <canvas id="herdCompositionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="milk"></i> Milk Production</h3>
+                            <span class="card-link" style="cursor:default;">Last 7 days</span>
+                        </div>
+                        <div class="card-body" style="min-height:240px;">
+                            <canvas id="milkTrendChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="wallet"></i> Finance Summary</h3>
+                            <a href="#finance" class="card-link" data-page="finance">Details →</a>
+                        </div>
+                        <div class="card-body" id="financeSummary" style="min-height:240px;">
+                            <!-- Dynamic content from DashboardModule -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerts & Tasks Row -->
+                <div class="dashboard-row widget" data-widget="alerts">
+                    <div class="card chart-wide">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="bell-ring"></i> Farm Alerts & Tasks</h3>
+                            <button class="btn btn-secondary" onclick="openModal('updateGoals')" style="padding: var(--space-xs) var(--space-sm); font-size: 0.85rem;">
+                                <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i> Manage
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <ul class="activity-list" id="farmAlerts" style="list-style:none;">
+                                <!-- Dynamic content from DashboardModule -->
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -374,7 +457,7 @@
                                         <div id="aiCropScore" style="font-size: 1.15rem; font-weight: 700; color: var(--accent-green-light); margin-bottom: 2px;">--% Suitability</div>
                                         <p id="aiCropReason" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: var(--space-xs); line-height: 1.3;">Analyzing weather data...</p>
                                         <p id="aiCropDetails" style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.3; font-style: italic; border-left: 2px solid var(--accent-green); padding-left: 6px; margin: 0;">Waiting for weather metrics...</p>
-                                        <div id="aiCropAccuracy" style="font-size: 0.6rem; color: var(--text-muted); margin-top: var(--space-sm); border-top: 1px solid rgba(255,255,255,0.05); padding-top: var(--space-xs);">--</div>
+                                        <div id="aiCropAccuracy" style="font-size: 0.6rem; color: var(--text-muted); margin-top: var(--space-sm); border-top: 1px solid var(--border-color); padding-top: var(--space-xs);">--</div>
                                     </div>
 
                                     <!-- Feed regeneration strategy -->
@@ -389,7 +472,7 @@
                                         <div style="margin-bottom: var(--space-sm); font-size: 0.75rem;">
                                             <span style="color: var(--text-muted);">Watering:</span> <span id="regenWater" style="color: var(--text-secondary);">Loading...</span>
                                         </div>
-                                        <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: var(--space-xs);">
+                                        <div style="border-top: 1px solid var(--border-color); padding-top: var(--space-xs);">
                                             <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: var(--space-xs);">Quick Action Tips</div>
                                             <ul id="regenTips" style="list-style: none; font-size: 0.7rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px; padding-left: 0; margin: 0;">
                                                 <li>Loading suggestions...</li>
@@ -441,12 +524,8 @@
                             <a href="#cctv" class="card-link" data-page="cctv">View All →</a>
                         </div>
                         <div class="card-body" style="padding: var(--space-sm);">
-                            <div class="cctv-feed" style="aspect-ratio: 16/10;">
-                                <div class="cctv-placeholder">
-                                    <i data-lucide="video"></i>
-                                    <span>Pasture Zone A — Camera 1</span>
-                                    <span style="font-size: 0.65rem; color: var(--accent-green);">● LIVE</span>
-                                </div>
+                            <div class="cctv-feed" id="dashboardCCTVPreview" style="aspect-ratio: 16/10; min-height: 180px;">
+                                <!-- Rendered by renderDashboardCCTVPreview() -->
                             </div>
                         </div>
                     </div>
@@ -482,6 +561,10 @@
                                 <button class="quick-action-btn" onclick="openModal('logFeeding')">
                                     <i data-lucide="wheat"></i>
                                     <span>Log Feed</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="openModal('logMilk')">
+                                    <i data-lucide="milk"></i>
+                                    <span>Log Milk</span>
                                 </button>
                                 <button class="quick-action-btn" onclick="openModal('reportHealth')">
                                     <i data-lucide="stethoscope"></i>
@@ -521,9 +604,11 @@
                     </div>
                     <div id="farmMap" class="map-container" style="height: 550px;"></div>
                     <div class="map-legend">
-                        <div class="legend-item"><span class="legend-dot" style="background: #5473d0;"></span> Farm Boundary</div>
-                        <div class="legend-item"><span class="legend-dot" style="background: var(--accent-green);"></span> Loaded Vector Layer</div>
-                        <div class="legend-item"><span class="legend-dot" style="background: var(--accent-amber);"></span> GeoTIFF Raster</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: #07503f;"></span> Farm Boundary</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: #7e9a3c;"></span> Loaded Vector Layer</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: #c7913c;"></span> GeoTIFF Raster</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: #b2cee7;"></span> Water Point</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: #e8fe85; border:1px solid #07503f;"></span> Field Worker</div>
                     </div>
                 </div>
 
@@ -532,28 +617,28 @@
                     <div class="stat-card stat-green">
                         <div class="stat-icon"><i data-lucide="trees"></i></div>
                         <div class="stat-content">
-                            <span class="stat-value">4</span>
+                            <span class="stat-value" id="geoPastureCount">0</span>
                             <span class="stat-label">Active Pasture Zones</span>
                         </div>
                     </div>
                     <div class="stat-card stat-brown">
                         <div class="stat-icon"><i data-lucide="home"></i></div>
                         <div class="stat-content">
-                            <span class="stat-value">6</span>
+                            <span class="stat-value" id="geoPaddockCount">0</span>
                             <span class="stat-label">Paddock Areas</span>
                         </div>
                     </div>
                     <div class="stat-card stat-blue">
                         <div class="stat-icon"><i data-lucide="droplets"></i></div>
                         <div class="stat-content">
-                            <span class="stat-value">3</span>
+                            <span class="stat-value" id="geoWaterCount">0</span>
                             <span class="stat-label">Water Points</span>
                         </div>
                     </div>
                     <div class="stat-card stat-amber">
                         <div class="stat-icon"><i data-lucide="wheat"></i></div>
                         <div class="stat-content">
-                            <span class="stat-value">5</span>
+                            <span class="stat-value" id="geoFeedCount">0</span>
                             <span class="stat-label">Feed Stations</span>
                         </div>
                     </div>
@@ -573,6 +658,37 @@
                         <i data-lucide="plus"></i>
                         Add Camera
                     </button>
+                </div>
+
+                <div class="ai-stats-row">
+                    <div class="ai-stat-card">
+                        <div class="ai-stat-icon"><i data-lucide="beef"></i></div>
+                        <div>
+                            <div class="ai-stat-value" id="aiCattleDetected">0</div>
+                            <div class="ai-stat-label">Cattle Detected</div>
+                        </div>
+                    </div>
+                    <div class="ai-stat-card">
+                        <div class="ai-stat-icon"><i data-lucide="user"></i></div>
+                        <div>
+                            <div class="ai-stat-value" id="aiHumansDetected">0</div>
+                            <div class="ai-stat-label">Humans Detected</div>
+                        </div>
+                    </div>
+                    <div class="ai-stat-card">
+                        <div class="ai-stat-icon"><i data-lucide="video"></i></div>
+                        <div>
+                            <div class="ai-stat-value" id="aiCamerasOnline">0</div>
+                            <div class="ai-stat-label">Cameras Online</div>
+                        </div>
+                    </div>
+                    <div class="ai-stat-card">
+                        <div class="ai-stat-icon"><i data-lucide="radio"></i></div>
+                        <div>
+                            <div class="ai-stat-value" id="aiFeedsActive">0</div>
+                            <div class="ai-stat-label">Feeds Active</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card" style="margin-bottom: var(--space-lg);">
@@ -861,6 +977,18 @@
                         </div>
                     </div>
                 </div>
+                <div class="dashboard-row">
+                    <div class="card chart-wide">
+                        <div class="card-header">
+                            <h3 class="card-title"><i data-lucide="syringe"></i> Vaccination Records</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="vaccination-list" id="vaccinationList" style="list-style:none;">
+                                <!-- Dynamic content -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- ============================== -->
@@ -1004,6 +1132,17 @@
 
                         <div class="finance-summary-grid" id="financeSummaryGrid"></div>
 
+                        <div class="finance-insights-row">
+                            <div class="finance-chart-card">
+                                <h4>Portfolio Allocation</h4>
+                                <canvas id="portfolioAllocationChart"></canvas>
+                            </div>
+                            <div class="finance-chart-card">
+                                <h4>Portfolio Value Trend</h4>
+                                <canvas id="portfolioValueChart"></canvas>
+                            </div>
+                        </div>
+
                         <div class="finance-tabs" role="tablist" aria-label="Investment sections">
                             <button class="finance-tab active" data-finance-tab="market" onclick="FinanceModule.switchTab('market')" title="Breed market">
                                 <i data-lucide="shopping-bag"></i>
@@ -1016,6 +1155,9 @@
                             </button>
                             <button class="finance-tab" data-finance-tab="rails" onclick="FinanceModule.switchTab('rails')" title="Payments and auth">
                                 <i data-lucide="shield-check"></i>
+                            </button>
+                            <button class="finance-tab" data-finance-tab="transactions" onclick="FinanceModule.switchTab('transactions')" title="Transaction history">
+                                <i data-lucide="receipt"></i>
                             </button>
                         </div>
 
@@ -1059,6 +1201,13 @@
                             <div class="payment-rail-list" id="paymentRailList"></div>
                             <div class="auth-pipeline" id="authPipeline"></div>
                         </div>
+
+                        <div class="finance-tab-panel" id="financeTransactionsPanel">
+                            <div class="finance-section-heading">
+                                <h3>Transaction History</h3>
+                            </div>
+                            <div class="transaction-list" id="transactionList"></div>
+                        </div>
                     </div>
 
                     <div class="finance-pipeline">
@@ -1085,32 +1234,165 @@
                     </div>
                 </div>
 
-                <div class="dashboard-row hidden">
-                    <div class="card">
-                        <div class="card-header"><h3 class="card-title">Recent Expenses</h3></div>
-                        <div class="card-body">
-                            <ul style="list-style: none;">
-                                <li style="padding: var(--space-sm) 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
-                                    <span>Premium Feed (Tier 2)</span> <span style="color: var(--accent-red);">-₦85,000</span>
-                                </li>
-                                <li style="padding: var(--space-sm) 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
-                                    <span>Veterinary Checkup</span> <span style="color: var(--accent-red);">-₦45,000</span>
-                                </li>
-                                <li style="padding: var(--space-sm) 0; display: flex; justify-content: space-between;">
-                                    <span>Pasture Maintenance</span> <span style="color: var(--accent-red);">-₦32,000</span>
-                                </li>
-                            </ul>
-                        </div>
+            </section>
+
+            <!-- INTELLIGENCE PAGE -->
+            <section class="page" id="intelligencePage">
+                <div class="page-header">
+                    <h2>Farm Intelligence</h2>
+                    <p class="page-description">AI-powered risk scoring, QR traceability, pasture health, price intelligence, co-ownership, and diaspora investment.</p>
+                </div>
+
+                <!-- Risk Scoring -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="alert-triangle"></i> Predictive Mortality Risk Scoring</h3>
+                        <button class="btn btn-secondary" style="padding:4px 12px;font-size:0.75rem;" onclick="IntelligenceModule.loadRiskScores()">Refresh</button>
                     </div>
-                    <div class="card">
-                        <div class="card-header"><h3 class="card-title">Cattle Portfolio Value</h3></div>
-                        <div class="card-body">
-                            <div style="font-size: 2rem; font-weight: bold; color: var(--accent-green); margin-bottom: var(--space-md);">
-                                ₦2,450,000
-                                <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:normal;">estimated</span>
+                    <div class="card-body" id="riskScorePanel" style="min-height:120px;">
+                        <p style="color:var(--text-muted);">Loading risk scores...</p>
+                    </div>
+                </div>
+
+                <!-- QR Traceability -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="qr-code"></i> Paddock-to-Plate QR Traceability</h3>
+                        <button class="btn btn-secondary" style="padding:4px 12px;font-size:0.75rem;" onclick="IntelligenceModule.loadTraceability()">Refresh</button>
+                    </div>
+                    <div class="card-body" id="traceabilityPanel" style="min-height:120px;">
+                        <p style="color:var(--text-muted);">Loading traceability records...</p>
+                    </div>
+                </div>
+
+                <!-- NDVI Pasture Health -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="satellite"></i> Drone NDVI Pasture Health Scan</h3>
+                    </div>
+                    <div class="card-body" id="ndviPanel">
+                        <div style="display:flex;gap:var(--space-md);align-items:flex-start;flex-wrap:wrap;margin-bottom:var(--space-md);">
+                            <div style="flex:1;min-width:0;max-width:100%;">
+                                <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-sm);">Upload a drone photo of your pasture to analyze vegetation health (pseudo-NDVI from RGB).</p>
+                                <input type="file" id="ndviFileInput" accept="image/*" style="font-size:0.8rem;margin-bottom:var(--space-sm);max-width:100%;">
+                                <input type="text" id="ndviZoneInput" placeholder="Zone name (e.g., Pasture Zone A)" style="font-size:0.8rem;padding:6px 10px;border:1px solid var(--border-color);border-radius:var(--radius-sm);margin-bottom:var(--space-sm);width:100%;max-width:300px;">
+                                <button class="btn btn-primary" style="padding:6px 16px;font-size:0.8rem;" onclick="IntelligenceModule.uploadNdvi()">Analyze Pasture</button>
                             </div>
-                            <button class="btn btn-primary" style="width: 100%;"><i data-lucide="plus"></i> Add Investment</button>
+                            <div id="ndviResult" style="flex:1;min-width:0;max-width:100%;"></div>
                         </div>
+                        <div id="ndviHistory" style="margin-top:var(--space-md);"></div>
+                    </div>
+                </div>
+
+                <!-- Price Intelligence -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="trending-up"></i> Breed Marketplace Price Intelligence</h3>
+                        <button class="btn btn-secondary" style="padding:4px 12px;font-size:0.75rem;" onclick="IntelligenceModule.loadPriceIntel()">Refresh</button>
+                    </div>
+                    <div class="card-body" id="priceIntelPanel" style="min-height:120px;">
+                        <p style="color:var(--text-muted);">Loading price intelligence...</p>
+                    </div>
+                </div>
+
+                <!-- Co-Ownership -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="users"></i> Co-Ownership Fractional Splits</h3>
+                    </div>
+                    <div class="card-body" id="coOwnershipPanel" style="min-height:120px;">
+                        <p style="color:var(--text-muted);">Loading co-ownership data...</p>
+                    </div>
+                </div>
+
+                <!-- Diaspora Portal -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="globe"></i> Diaspora Investment Portal</h3>
+                        <button class="btn btn-secondary" style="padding:4px 12px;font-size:0.75rem;" onclick="IntelligenceModule.loadDiasporaPortal()">Refresh</button>
+                    </div>
+                    <div class="card-body" id="diasporaPanel" style="min-height:120px;">
+                        <p style="color:var(--text-muted);">Loading diaspora portal data...</p>
+                    </div>
+                </div>
+
+                <!-- Voice Notes -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="mic"></i> Voice Notes for Field Workers</h3>
+                    </div>
+                    <div class="card-body" id="voiceNotesPanel">
+                        <div style="display:flex;gap:var(--space-sm);align-items:center;flex-wrap:wrap;margin-bottom:var(--space-md);">
+                            <button class="btn btn-primary" style="padding:6px 16px;font-size:0.8rem;flex-shrink:0;" id="voiceRecordBtn" onclick="IntelligenceModule.toggleRecording()">
+                                <i data-lucide="mic"></i> <span id="voiceRecordLabel">Start Recording</span>
+                            </button>
+                            <input type="text" id="voiceWorkerName" placeholder="Worker name" style="font-size:0.8rem;padding:6px 10px;border:1px solid var(--border-color);border-radius:var(--radius-sm);min-width:0;flex:1;max-width:160px;">
+                            <input type="text" id="voiceAnimalTag" placeholder="Cattle tag (optional)" style="font-size:0.8rem;padding:6px 10px;border:1px solid var(--border-color);border-radius:var(--radius-sm);min-width:0;flex:1;max-width:180px;">
+                            <span id="voiceRecordStatus" style="font-size:0.78rem;color:var(--text-muted);width:100%;"></span>
+                        </div>
+                        <div id="voiceNotesList" style="margin-top:var(--space-sm);"></div>
+                    </div>
+                </div>
+
+                <!-- Weight Estimation -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="scale"></i> Weight Estimation from Photos</h3>
+                    </div>
+                    <div class="card-body" id="weightEstimatePanel">
+                        <div style="display:flex;gap:var(--space-md);align-items:flex-start;flex-wrap:wrap;margin-bottom:var(--space-md);">
+                            <div style="flex:1;min-width:0;max-width:100%;">
+                                <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:var(--space-sm);">Upload a side-profile photo of cattle to estimate weight using body contour analysis.</p>
+                                <input type="file" id="weightFileInput" accept="image/*" style="font-size:0.8rem;margin-bottom:var(--space-sm);max-width:100%;">
+                                <input type="text" id="weightAnimalTag" placeholder="Cattle tag (e.g., BRN-001)" style="font-size:0.8rem;padding:6px 10px;border:1px solid var(--border-color);border-radius:var(--radius-sm);margin-bottom:var(--space-sm);width:100%;max-width:300px;">
+                                <button class="btn btn-primary" style="padding:6px 16px;font-size:0.8rem;" onclick="IntelligenceModule.uploadWeightPhoto()">Estimate Weight</button>
+                            </div>
+                            <div id="weightResult" style="flex:1;min-width:0;max-width:100%;"></div>
+                        </div>
+                        <div id="weightHistory" style="margin-top:var(--space-md);"></div>
+                    </div>
+                </div>
+
+                <!-- Theft Alert System -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="shield-alert"></i> Cattle Theft Alert System</h3>
+                        <button class="btn btn-secondary" style="padding:4px 12px;font-size:0.75rem;" onclick="IntelligenceModule.loadTheftAlerts()">Refresh</button>
+                    </div>
+                    <div class="card-body" id="theftAlertPanel" style="min-height:120px;">
+                        <p style="color:var(--text-muted);">Loading theft alerts...</p>
+                    </div>
+                </div>
+
+                <!-- Profitability Simulator -->
+                <div class="card" style="margin-bottom: var(--space-lg);">
+                    <div class="card-header">
+                        <h3 class="card-title"><i data-lucide="calculator"></i> Farm Profitability Simulator</h3>
+                    </div>
+                    <div class="card-body" id="simulatorPanel">
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:var(--space-sm);margin-bottom:var(--space-md);">
+                            <div class="form-group">
+                                <label class="form-label" style="font-size:0.8rem;">Feed Tier</label>
+                                <select id="simFeedTier" class="form-select" style="font-size:0.8rem;">
+                                    <option value="Basic">Basic</option>
+                                    <option value="Advanced">Advanced</option>
+                                    <option value="Premium">Premium</option>
+                                    <option value="Elite">Elite</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="font-size:0.8rem;">Sell in (months)</label>
+                                <input type="number" id="simMonths" class="form-input" style="font-size:0.8rem;" value="6" min="1" max="24">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="font-size:0.8rem;">Add cattle</label>
+                                <input type="number" id="simAddCattle" class="form-input" style="font-size:0.8rem;" value="0" min="0" max="500">
+                            </div>
+                            <div class="form-group" style="display:flex;align-items:flex-end;">
+                                <button class="btn btn-primary" style="padding:6px 16px;font-size:0.8rem;width:100%;" onclick="IntelligenceModule.runSimulation()">Simulate</button>
+                            </div>
+                        </div>
+                        <div id="simulatorResult"></div>
                     </div>
                 </div>
             </section>
@@ -1145,6 +1427,7 @@
     <script src="js/feed.js"></script>
     <script src="js/finance.js"></script>
     <script src="js/customize.js"></script>
+    <script src="js/intelligence.js"></script>
     <script src="js/app.js"></script>
     <script>
         // Register Service Worker for PWA
@@ -1159,6 +1442,17 @@
     <script>
         const AI_BACKEND_URL = 'http://127.0.0.1:5000';
         let aiStatsInterval = null;
+
+        // Expand/collapse a CCTV feed to fullscreen
+        function toggleCCTVExpand(btn) {
+            const card = btn.closest('.cctv-feed');
+            if (!card) return;
+            const isExpanded = card.classList.toggle('cctv-fullscreen');
+            btn.innerHTML = isExpanded
+                ? '<i data-lucide="minimize-2"></i>'
+                : '<i data-lucide="maximize-2"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
 
         // Render CCTV grid from FarmData.cameras (the canonical camera data structure)
         function renderCCTVGrid() {
@@ -1177,18 +1471,18 @@
                 const feedId = `aiVideoFeed${cameraNum}`;
                 const placeholderId = `aiPlaceholder${cameraNum}`;
 
+                const hasStream = cam.stream_url && cam.stream_url.trim().length > 0;
                 const card = document.createElement('div');
                 card.className = `cctv-feed ${isUAV ? 'uav-feed' : ''}`;
                 card.dataset.camera = cameraNum;
                 card.dataset.cameraId = cam.id;
                 card.innerHTML = `
-                    <img id="${feedId}"
-                         src=""
-                         style="width:100%; height:100%; object-fit:cover; display:none;" />
-                    <div class="cctv-placeholder" id="${placeholderId}">
+                    ${hasStream ? `<video id="${feedId}" src="${cam.stream_url}" autoplay muted playsinline style="width:100%; height:100%; object-fit:cover; display:block;" onerror="this.style.display='none'; document.getElementById('${placeholderId}').style.display='flex';"></video>` : `<img id="${feedId}" src="" style="width:100%; height:100%; object-fit:cover; display:none;" />`}
+                    <div class="cctv-placeholder" id="${placeholderId}" ${hasStream ? 'style="display:none;"' : ''}>
                         <i data-lucide="${isUAV ? 'drone' : 'video'}"></i>
                         <span>${isUAV ? 'Upload Drone Video for Shepherd Mode' : cam.name}</span>
                         ${cam.status === 'offline' ? '<span style="font-size:0.65rem;color:var(--accent-red);">● OFFLINE</span>' : ''}
+                        ${!hasStream ? '<span style="font-size:0.65rem;color:var(--text-muted);">Set stream URL in settings</span>' : ''}
                     </div>
                     <div class="cctv-overlay">
                         ${isUAV ? '<div class="feed-type-badge">Shepherd Mode</div>' : ''}
@@ -1197,7 +1491,7 @@
                             <span class="cctv-status ${statusClass}"><span class="live-dot"></span> ${cam.status === 'online' ? 'LIVE' : 'OFFLINE'}</span>
                         </div>
                     </div>
-                    <button class="cctv-expand-btn"><i data-lucide="maximize-2"></i></button>
+                    <button class="cctv-expand-btn" onclick="toggleCCTVExpand(this)"><i data-lucide="maximize-2"></i></button>
                 `;
                 grid.appendChild(card);
 
@@ -1221,15 +1515,25 @@
                     row.innerHTML = `
                         <td>${label}</td>
                         <td>${cam.name}</td>
-                        <td style="color: var(--text-muted);">${cam.ip}</td>
+                        <td style="color: var(--text-muted);">
+                            <input type="text" value="${cam.stream_url || cam.ip || ''}" placeholder="http://.../stream.m3u8" style="width:160px;font-size:0.75rem;padding:4px;background:transparent;border:1px solid rgba(0,0,0,0.08);" onchange="updateCameraUrl('${cam.id}', this.value)">
+                        </td>
                         <td><span style="color: ${isOnline ? 'var(--accent-green)' : 'var(--accent-red)'};">● ${isOnline ? 'Online' : 'Offline'}</span></td>
-                        <td>${cam.resolution}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding:4px 8px;font-size:0.7rem;" onclick="toggleCameraStatus('${cam.id}')">Toggle</button>
+                        </td>
                     `;
                     tableBody.appendChild(row);
                 });
             }
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Update AI stats summary cards
+            const online = cameras.filter(c => c.status === 'online').length;
+            const setStat = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            setStat('aiCamerasOnline', online);
+            setStat('aiFeedsActive', 0);
         }
 
         function isUAVById(id) {
@@ -1241,6 +1545,38 @@
             document.addEventListener('DOMContentLoaded', renderCCTVGrid);
         } else {
             renderCCTVGrid();
+        }
+
+        async function updateCameraUrl(id, url) {
+            try {
+                const res = await backendFetch(`/api/cameras/${id}`, { method: 'PATCH', body: { stream_url: url } });
+                if (!res.ok) return;
+                const cam = FarmData.cameras.find(c => c.id === id);
+                if (cam) cam.stream_url = url;
+                saveData();
+                renderCCTVGrid();
+                showNotification('Stream URL updated', 'success');
+            } catch (e) {
+                console.error('Camera update failed:', e);
+                showNotification('Could not update camera', 'error');
+            }
+        }
+
+        async function toggleCameraStatus(id) {
+            const cam = FarmData.cameras.find(c => c.id === id);
+            if (!cam) return;
+            const next = cam.status === 'online' ? 'offline' : 'online';
+            try {
+                const res = await backendFetch(`/api/cameras/${id}`, { method: 'PATCH', body: { status: next } });
+                if (!res.ok) return;
+                cam.status = next;
+                saveData();
+                renderCCTVGrid();
+                showNotification(`Camera ${next}`, 'info');
+            } catch (e) {
+                console.error('Camera status update failed:', e);
+                showNotification('Could not update camera', 'error');
+            }
         }
 
         async function uploadAIVideo() {
@@ -1347,6 +1683,12 @@
             const cows = totals.cows ?? totals.cow_count ?? totals.cowCount ?? totals.cattle ?? 0;
             const humans = totals.humans ?? totals.human_count ?? totals.humanCount ?? totals.people ?? 0;
             stats.textContent = `🐄 Cows: ${cows} | 🧍 Humans: ${humans}`;
+
+            // Update AI stats summary cards
+            const setStat = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            setStat('aiCattleDetected', cows);
+            setStat('aiHumansDetected', humans);
+            setStat('aiFeedsActive', 1);
         }
 
         function startAIStatsPolling(countsUrl) {

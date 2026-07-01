@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arva — DESIGN.md</title>
+  <link rel="icon" href="favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <style>
+    :root {
+      --forest: #07503f;
+      --lime: #e8fe85;
+      --bone: #f1efdf;
+      --white: #ffffff;
+      --ash: #efefef;
+      --charcoal: #212529;
+      --graphite: #353535;
+      --pewter: #6d6d6d;
+      --sky: #b2cee7;
+      --peach: #fceace;
+      --sage: #e6ecd5;
+      --moss: #c3cda7;
+      --serif: "Cormorant Garamond", "Reckless", Georgia, serif;
+      --sans: "Inter", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; border-radius: 0 !important; }
+    html, body { margin: 0; background: var(--bone); }
+    body { font-family: var(--sans); color: var(--charcoal); line-height: 1.52; font-size: 16px; }
+
+    .marquee { background: var(--lime); color: var(--charcoal); font-size: 13px; letter-spacing: 0.025em; padding: 9px 0; text-align: center; font-weight: 500; }
+    .nav { background: var(--forest); color: #fff; }
+    .nav-inner { max-width: 1040px; margin: 0 auto; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .nav .brand { display: flex; align-items: center; gap: 9px; font-family: var(--serif); font-weight: 600; font-size: 24px; letter-spacing: -0.012em; }
+    .nav .pill { background: #fff; color: var(--charcoal); border-radius: 110px; padding: 8px 18px; font-size: 13px; font-weight: 500; }
+    .nav .tag { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; opacity: .8; }
+
+    main { max-width: 1040px; margin: 0 auto; padding: 44px 24px 140px; }
+    .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; margin: 0 0 48px; }
+    .swatch { background: var(--white); border: 1px solid var(--moss); border-radius: 20px; padding: 14px; font-size: 11px; }
+    .swatch .chip { width: 100%; height: 42px; border-radius: 100px; border: 1px solid rgba(0,0,0,.08); margin-bottom: 10px; }
+    .swatch b { display: block; font-size: 12px; margin-bottom: 2px; color: var(--charcoal); }
+    .swatch span { color: var(--pewter); }
+
+    article { background: var(--white); border: 1px solid var(--moss); border-radius: 20px; padding: 50px 56px; }
+    h1 { font-family: var(--serif); font-size: 57px; line-height: 1.06; font-weight: 300; letter-spacing: -0.022em; margin: 0 0 22px; }
+    h2 { font-family: var(--serif); font-size: 37px; line-height: 1.22; font-weight: 500; letter-spacing: -0.012em; margin: 56px 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--bone); }
+    h3 { font-family: var(--serif); font-size: 24px; font-weight: 600; letter-spacing: -0.012em; margin: 30px 0 8px; }
+    p, li { font-size: 16px; color: var(--graphite); }
+    li { margin: 3px 0; }
+    strong { color: var(--charcoal); }
+    blockquote { font-family: var(--serif); font-weight: 300; border-left: 3px solid var(--forest); margin: 24px 0; padding: 6px 0 6px 22px; color: var(--graphite); font-style: italic; font-size: 25px; line-height: 1.22; }
+    code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; background: var(--sage); border-radius: 26px; padding: 2px 11px; color: var(--charcoal); }
+    table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--bone); vertical-align: top; color: var(--graphite); }
+    th { background: var(--bone); color: var(--charcoal); text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; font-weight: 600; }
+    a { color: var(--forest); }
+    hr { border: 0; border-top: 1px solid var(--moss); margin: 48px 0; }
+    em { color: var(--pewter); }
+  </style>
+</head>
+<body>
+  <div class="marquee">NEW · Borne Farms field guides &nbsp;✓&nbsp; Smarter herd planning &nbsp;✓&nbsp; Earn from milk production</div>
+  <div class="nav">
+    <div class="nav-inner">
+      <span class="brand">
+        <img src="assets/borne-farms-logo-transparent.png" alt="Borne Farms" style="height: 36px; width: auto; object-fit: contain;">
+      </span>
+      <span class="tag">Design System</span>
+      <span class="pill">Get in touch</span>
+    </div>
+  </div>
+  <main>
+    <div class="swatches" id="swatches"></div>
+    <article id="content">Loading DESIGN.md…</article>
+  </main>
+  <script>
+    const palette = [
+      ["Forest Ink", "#07503f"], ["Vivid Lime", "#e8fe85"], ["Bone", "#f1efdf"], ["Pure White", "#ffffff"],
+      ["Ash Gray", "#efefef"], ["Charcoal", "#212529"], ["Graphite", "#353535"], ["Pewter", "#6d6d6d"],
+      ["Sky Card", "#b2cee7"], ["Peach Card", "#fceace"], ["Sage Card", "#e6ecd5"], ["Moss", "#c3cda7"]
+    ];
+    document.getElementById("swatches").innerHTML = palette.map(([n, c]) =>
+      `<div class="swatch"><div class="chip" style="background:${c}"></div><b>${n}</b><span>${c}</span></div>`
+    ).join("");
+
+    fetch("DESIGN.md")
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(md => { document.getElementById("content").innerHTML = marked.parse(md); })
+      .catch(e => { document.getElementById("content").innerHTML =
+        `<p style="color:#07503f">Could not load DESIGN.md (${e.message}). Serve over HTTP, e.g. <code>python -m http.server 8000</code>, then open <code>http://localhost:8000/design.html</code>.</p>`; });
+  </script>
+</body>
+</html>

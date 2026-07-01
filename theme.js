@@ -15,7 +15,8 @@
         { key: 'slate',    name: 'Slate',    p: '#4d80e0', s: '#7d8aa6' },
         { key: 'emerald',  name: 'Emerald',  p: '#1aa86d', s: '#84c54f' },
         { key: 'violet',   name: 'Violet',   p: '#7c5ce0', s: '#d06bb0' },
-        { key: 'heritage', name: 'Heritage', p: '#a0724a', s: '#5fa052' }
+        { key: 'heritage', name: 'Heritage', p: '#a0724a', s: '#5fa052' },
+        { key: 'arva', name: 'Arva', p: '#07503f', s: '#e8fe85' }
     ];
     var SVG = {
         sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg>',
@@ -25,8 +26,8 @@
     var root = document.documentElement;
     var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
     var storedTheme = localStorage.getItem(STORE_THEME);
-    var theme = storedTheme || (systemDark && systemDark.matches ? 'dark' : (systemDark ? 'light' : 'dark'));
-    var accent = localStorage.getItem(STORE_ACCENT) || 'midnight';
+    var theme = storedTheme || 'light';
+    var accent = localStorage.getItem(STORE_ACCENT) || 'arva';
 
     root.setAttribute('data-theme', theme);
     root.setAttribute('data-accent', accent);
@@ -34,7 +35,7 @@
     function setMeta() {
         var m = document.querySelector('meta[name="theme-color"]');
         if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
-        m.content = theme === 'light' ? '#f4f7fc' : '#060c1d';
+        m.content = theme === 'light' ? '#f1efdf' : '#060c1d';
     }
     function swapHeroImages() {
         var imgs = document.querySelectorAll('img[data-img-light][data-img-dark]');

@@ -4,10 +4,23 @@
 
 const FinanceModule = {
     currentTab: 'market',
+    allocationChart: null,
+    valueChart: null,
 
-    init() {
+    async init() {
         if (!FarmData.investment && typeof ensureInvestmentData === 'function') ensureInvestmentData();
+        await this.loadWallet();
         this.render();
+    },
+
+    async loadWallet() {
+        this.backendWallet = { balance: 0, currency: 'NGN' };
+        try {
+            const res = await backendFetch('/api/wallet');
+            if (res.ok) this.backendWallet = await res.json();
+        } catch (e) {
+            console.error('Wallet load failed:', e);
+        }
     },
 
     formatMoney(amount) {
@@ -16,6 +29,19 @@ const FinanceModule = {
 
     portfolioValue() {
         return FarmData.investment.holdings.reduce((sum, item) => sum + item.currentValue, 0);
+    },
+
+    totalInvested() {
+        return FarmData.investment.holdings.reduce((sum, item) => sum + item.purchasePrice, 0);
+    },
+
+    netPnL() {
+        return this.portfolioValue() - this.totalInvested();
+    },
+
+    roiPercent() {
+        const inv = this.totalInvested();
+        return inv > 0 ? (this.netPnL() / inv) * 100 : 0;
     },
 
     switchTab(tab) {
@@ -35,6 +61,8 @@ const FinanceModule = {
         this.renderPortfolio();
         this.renderOffers();
         this.renderRails();
+        this.renderTransactions();
+        this.renderCharts();
         lucide.createIcons();
     },
 
@@ -43,6 +71,9 @@ const FinanceModule = {
         if (!grid) return;
         const investment = FarmData.investment;
         const tradable = investment.holdings.filter(item => item.status === 'Tradable').length;
+        const pnl = this.netPnL();
+        const roi = this.roiPercent();
+        const pnlClass = pnl >= 0 ? 'positive' : 'negative';
         grid.innerHTML = `
             <div class="finance-mini-stat">
                 <span>Portfolio</span>
@@ -50,11 +81,23 @@ const FinanceModule = {
             </div>
             <div class="finance-mini-stat">
                 <span>Wallet</span>
-                <strong>${this.formatMoney(investment.wallet.balance)}</strong>
+                <strong>${this.formatMoney(this.backendWallet.balance)}</strong>
             </div>
             <div class="finance-mini-stat">
                 <span>Tradable</span>
                 <strong>${tradable} units</strong>
+            </div>
+            <div class="finance-mini-stat">
+                <span>Invested</span>
+                <strong>${this.formatMoney(this.totalInvested())}</strong>
+            </div>
+            <div class="finance-mini-stat">
+                <span>Net P&L</span>
+                <strong class="${pnlClass}" style="color:${pnl >= 0 ? '#07503f' : 'var(--accent-red)'}">${pnl >= 0 ? '+' : '−'}${this.formatMoney(Math.abs(pnl))}</strong>
+            </div>
+            <div class="finance-mini-stat">
+                <span>ROI</span>
+                <strong style="color:${roi >= 0 ? '#07503f' : 'var(--accent-red)'}">${roi >= 0 ? '+' : ''}${roi.toFixed(1)}%</strong>
             </div>
         `;
     },
@@ -182,6 +225,139 @@ const FinanceModule = {
         }
     },
 
+    renderCharts() {
+        this.renderAllocationChart();
+        this.renderValueChart();
+    },
+
+    renderAllocationChart() {
+        const ctx = document.getElementById('portfolioAllocationChart');
+        if (!ctx || typeof Chart === 'undefined') return;
+        const holdings = FarmData.investment.holdings;
+        const byBreed = {};
+        holdings.forEach(h => { byBreed[h.breed] = (byBreed[h.breed] || 0) + h.currentValue; });
+        const labels = Object.keys(byBreed);
+        const data = Object.values(byBreed);
+        const palette = ['#07503f', '#7e9a3c', '#c7913c', '#b2cee7', '#c3cda7', '#fceace'];
+        if (this.allocationChart) this.allocationChart.destroy();
+        this.allocationChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data,
+                    backgroundColor: palette.slice(0, labels.length),
+                    borderColor: '#ffffff', borderWidth: 2, hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '60%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#6d6d6d', font: { family: 'Inter', size: 10 }, padding: 10, boxWidth: 10 } }
+                }
+            }
+        });
+    },
+
+    renderValueChart() {
+        const ctx = document.getElementById('portfolioValueChart');
+        if (!ctx || typeof Chart === 'undefined') return;
+
+        // Build chart from real transaction history + current portfolio value
+        const txns = (FarmData.investment.transactions || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+        const invested = this.totalInvested();
+        const current = this.portfolioValue();
+
+        let labels, data;
+        if (txns.length >= 2) {
+            // Build cumulative value timeline from transactions
+            let running = 0;
+            data = [];
+            labels = [];
+            txns.forEach(t => {
+                if (t.type === 'Buy' || t.type === 'Feed Upgrade') {
+                    running += t.amount;
+                } else if (t.type === 'Sale' || t.type === 'Dividend') {
+                    running -= t.amount;
+                }
+                // Apply growth proportionally for Buy transactions
+                const grownValue = t.type === 'Buy' ? Math.round(t.amount * (current / invested)) : running;
+                data.push(grownValue);
+                labels.push(t.date);
+            });
+            // Add current portfolio value as the final point
+            data.push(current);
+            labels.push('Now');
+        } else if (txns.length === 1) {
+            data = [txns[0].amount, current];
+            labels = [txns[0].date, 'Now'];
+        } else {
+            // Fallback: invested → current
+            data = [invested, current];
+            labels = ['Invested', 'Now'];
+        }
+
+        if (this.valueChart) this.valueChart.destroy();
+        this.valueChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Portfolio value',
+                    data,
+                    borderColor: '#07503f',
+                    backgroundColor: 'rgba(7,80,63,0.10)',
+                    fill: true, tension: 0.35, borderWidth: 2,
+                    pointBackgroundColor: '#07503f', pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: 'rgba(33,37,41,0.06)' }, ticks: { color: '#6d6d6d', font: { family: 'Inter', size: 10 } } },
+                    y: { grid: { color: 'rgba(33,37,41,0.06)' }, ticks: { color: '#6d6d6d', font: { family: 'Inter', size: 10 }, callback: v => '₦' + (v / 1000) + 'k' } }
+                }
+            }
+        });
+    },
+
+    renderTransactions() {
+        const list = document.getElementById('transactionList');
+        if (!list) return;
+        const txns = FarmData.investment.transactions || [];
+        if (txns.length === 0) {
+            list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:var(--space-lg);">No transactions yet</p>';
+            return;
+        }
+        const iconFor = type => {
+            if (type === 'Buy') return 'shopping-cart';
+            if (type === 'Sale') return 'hand-coins';
+            if (type === 'Deposit') return 'arrow-down-circle';
+            if (type === 'Feed Upgrade') return 'wheat';
+            return 'receipt';
+        };
+        const isPositive = type => type === 'Sale' || type === 'Deposit';
+        list.innerHTML = txns.slice(0, 20).map(t => {
+            const positive = isPositive(t.type);
+            return `
+                <div class="transaction-item">
+                    <div class="tx-left">
+                        <div class="tx-icon"><i data-lucide="${iconFor(t.type)}"></i></div>
+                        <div class="tx-info">
+                            <div class="tx-type">${t.type}</div>
+                            <div class="tx-rail">${t.rail}</div>
+                        </div>
+                    </div>
+                    <div class="tx-right">
+                        <div class="tx-amount ${positive ? 'positive' : 'negative'}">${positive ? '+' : '−'}${this.formatMoney(t.amount)}</div>
+                        <div class="tx-date">${formatDate(t.date)} <span class="tx-status">${t.status}</span></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
     selectLot(lotId) {
         this.selectedLotId = lotId;
         setTimeout(() => {
@@ -206,14 +382,8 @@ const FinanceModule = {
                         <input class="form-input" type="number" name="units" min="1" value="1" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Payment Rail</label>
-                        <select class="form-select" name="rail">
-                            <option>Paystack Bank Transfer</option>
-                            <option>Paystack Card</option>
-                            <option>Flutterwave Mobile Money</option>
-                            <option>Flutterwave Card</option>
-                            <option>Wallet Balance</option>
-                        </select>
+                        <label class="form-label">Payment Source</label>
+                        <input class="form-input" type="text" value="Wallet Balance (Demo)" readonly>
                     </div>
                 </div>
                 <div class="form-group">
@@ -227,7 +397,7 @@ const FinanceModule = {
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Initiate Purchase</button>
+                    <button type="submit" class="btn btn-primary">Purchase with Wallet</button>
                 </div>
             </form>
         `;
@@ -322,63 +492,72 @@ const FinanceModule = {
         `;
     },
 
-    buyBreed(event) {
+    async buyBreed(event) {
         event.preventDefault();
         const form = new FormData(event.target);
-        const lot = FarmData.investment.breedLots.find(item => item.id === form.get('lotId'));
+        const lotId = form.get('lotId');
         const units = parseInt(form.get('units'), 10) || 1;
-        const lockMonths = parseInt(form.get('lockMonths'), 10) || 0;
-        if (!lot || lot.availableUnits < units) {
-            showNotification('Selected lot does not have enough available units', 'error');
-            return;
+        try {
+            const res = await backendFetch('/api/marketplace/buy', {
+                method: 'POST',
+                body: { lotId, units }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showNotification(data.error || 'Buy failed', 'error');
+                return;
+            }
+            // Update local farm data to reflect purchase
+            const lot = FarmData.investment.breedLots.find(item => item.id === lotId);
+            if (lot && data.holding) {
+                lot.availableUnits = Math.max(0, lot.availableUnits - units);
+                FarmData.investment.holdings.unshift(data.holding);
+            }
+            await this.loadWallet();
+            saveData();
+            closeModal();
+            this.render();
+            showNotification('Purchase settled. New holding added.', 'success');
+        } catch (e) {
+            console.error('Buy failed:', e);
+            showNotification('Could not complete purchase. Backend unavailable?', 'error');
         }
-
-        const amount = lot.unitPrice * units;
-        lot.availableUnits -= units;
-        const lockUntil = lockMonths ? this.futureDate(lockMonths) : null;
-        FarmData.investment.holdings.unshift({
-            id: generateId(),
-            breed: lot.breed,
-            units,
-            purchasePrice: amount,
-            currentValue: amount,
-            weightStartKg: 220,
-            weightCurrentKg: 220,
-            growthPercent: 0,
-            feedTier: lot.feedTier,
-            lockUntil,
-            status: lockUntil ? 'Locked' : 'Tradable',
-            tag: `BRN-${lot.breed.slice(0, 2).toUpperCase()}-${Math.floor(Math.random() * 900 + 100)}`
-        });
-        FarmData.investment.transactions.unshift({
-            id: generateId(),
-            type: 'Buy',
-            rail: form.get('rail'),
-            amount,
-            status: 'Escrow initiated',
-            date: new Date().toISOString().split('T')[0]
-        });
-        saveData();
-        closeModal();
-        this.render();
-        showNotification('Purchase initiated through Borne Farms escrow', 'success');
     },
 
-    makeOffer(event) {
+    async makeOffer(event) {
         event.preventDefault();
         const form = new FormData(event.target);
-        FarmData.investment.marketplaceOffers.unshift({
-            id: generateId(),
-            holdingId: form.get('holdingId'),
-            buyer: form.get('buyer'),
-            price: parseInt(form.get('price'), 10) || 0,
-            expires: this.futureDate(0, 7),
-            status: 'Open'
-        });
-        saveData();
-        closeModal();
-        this.renderOffers();
-        showNotification('Buyer offer posted', 'success');
+        const holdingId = form.get('holdingId');
+        const totalPrice = parseInt(form.get('price'), 10) || 0;
+        const holding = FarmData.investment.holdings.find(item => item.id === holdingId);
+        if (!holding || totalPrice <= 0) {
+            showNotification('Invalid holding or price', 'error');
+            return;
+        }
+        const pricePerUnit = Math.round(totalPrice / holding.units);
+        try {
+            const res = await backendFetch('/api/marketplace/sell', {
+                method: 'POST',
+                body: { holdingId, pricePerUnit }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showNotification(data.error || 'Offer failed', 'error');
+                return;
+            }
+            if (data.offer) {
+                data.offer.buyer = form.get('buyer');
+                FarmData.investment.marketplaceOffers.unshift(data.offer);
+            }
+            holding.status = 'Listed';
+            saveData();
+            closeModal();
+            this.renderOffers();
+            showNotification('Buyer offer posted', 'success');
+        } catch (e) {
+            console.error('Offer failed:', e);
+            showNotification('Could not post offer. Backend unavailable?', 'error');
+        }
     },
 
     applyLock(event) {
@@ -399,67 +578,123 @@ const FinanceModule = {
         showNotification('Investment locked successfully', 'success');
     },
 
-    requestSale(id) {
+    async requestSale(id) {
         const holding = FarmData.investment.holdings.find(item => item.id === id);
         if (!holding || holding.status !== 'Tradable') return;
-        FarmData.investment.marketplaceOffers.unshift({
-            id: generateId(),
-            holdingId: id,
-            buyer: 'Open Marketplace',
-            price: Math.round(holding.currentValue * 1.04),
-            expires: this.futureDate(0, 5),
-            status: 'Open'
-        });
-        saveData();
-        this.renderOffers();
-        this.switchTab('offers');
-        showNotification('Sale request listed for buyer offers', 'success');
+        const pricePerUnit = Math.round(holding.currentValue / holding.units * 1.04);
+        try {
+            const res = await backendFetch('/api/marketplace/sell', {
+                method: 'POST',
+                body: { holdingId: id, pricePerUnit }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showNotification(data.error || 'Listing failed', 'error');
+                return;
+            }
+            if (data.offer) FarmData.investment.marketplaceOffers.unshift(data.offer);
+            holding.status = 'Listed';
+            saveData();
+            this.renderOffers();
+            this.switchTab('offers');
+            showNotification('Sale request listed for buyer offers', 'success');
+        } catch (e) {
+            console.error('Sale listing failed:', e);
+            showNotification('Could not list holding. Backend unavailable?', 'error');
+        }
     },
 
-    acceptOffer(id) {
-        const offer = FarmData.investment.marketplaceOffers.find(item => item.id === id);
-        if (!offer || offer.status !== 'Open') return;
-        offer.status = 'Accepted';
-        FarmData.investment.wallet.escrowValue = (FarmData.investment.wallet.escrowValue || 0) + offer.price;
-        FarmData.investment.transactions.unshift({
-            id: generateId(),
-            type: 'Sale',
-            rail: 'Borne Farms Escrow',
-            amount: offer.price,
-            status: 'Pending settlement',
-            date: new Date().toISOString().split('T')[0]
-        });
-        saveData();
-        this.render();
-        showNotification('Offer accepted and moved to escrow', 'success');
+    async acceptOffer(id) {
+        try {
+            const res = await backendFetch('/api/offers/respond', {
+                method: 'POST',
+                body: { offerId: id, action: 'accept' }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showNotification(data.error || 'Accept failed', 'error');
+                return;
+            }
+            const offer = FarmData.investment.marketplaceOffers.find(item => item.id === id);
+            if (offer && data.offer) Object.assign(offer, data.offer);
+            if (data.holding) {
+                const idx = FarmData.investment.holdings.findIndex(h => h.id === data.holding.id);
+                if (idx >= 0) FarmData.investment.holdings[idx] = data.holding;
+                else FarmData.investment.holdings.unshift(data.holding);
+            }
+            await this.loadWallet();
+            saveData();
+            this.render();
+            showNotification('Offer accepted and settled', 'success');
+        } catch (e) {
+            console.error('Accept offer failed:', e);
+            showNotification('Could not accept offer. Backend unavailable?', 'error');
+        }
     },
 
-    rejectOffer(id) {
-        const offer = FarmData.investment.marketplaceOffers.find(item => item.id === id);
-        if (!offer) return;
-        offer.status = 'Rejected';
-        saveData();
-        this.renderOffers();
-        showNotification('Offer rejected', 'info');
+    async rejectOffer(id) {
+        try {
+            const res = await backendFetch('/api/offers/respond', {
+                method: 'POST',
+                body: { offerId: id, action: 'reject' }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showNotification(data.error || 'Reject failed', 'error');
+                return;
+            }
+            const offer = FarmData.investment.marketplaceOffers.find(item => item.id === id);
+            if (offer) offer.status = 'Rejected';
+            saveData();
+            this.renderOffers();
+            showNotification('Offer rejected', 'info');
+        } catch (e) {
+            console.error('Reject offer failed:', e);
+            showNotification('Could not reject offer. Backend unavailable?', 'error');
+        }
     },
 
-    recordPayment(event) {
+    async recordPayment(event) {
         event.preventDefault();
         const form = new FormData(event.target);
         const amount = parseInt(form.get('amount'), 10) || 0;
-        FarmData.investment.wallet.balance += amount;
-        FarmData.investment.transactions.unshift({
-            id: generateId(),
-            type: 'Deposit',
-            rail: form.get('rail'),
-            amount,
-            status: 'Settled',
-            date: new Date().toISOString().split('T')[0]
-        });
-        saveData();
-        closeModal();
-        this.render();
-        showNotification('Wallet deposit simulated', 'success');
+        const rail = form.get('rail') || 'Paystack Bank Transfer';
+        const provider = rail.toLowerCase().includes('paystack') ? 'paystack' : rail.toLowerCase().includes('flutterwave') ? 'flutterwave' : 'stripe';
+        try {
+            const res = await backendFetch('/api/payment/checkout', {
+                method: 'POST',
+                body: { amount, provider }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showNotification(data.error || 'Checkout failed', 'error');
+                return;
+            }
+            // Simulate the payment callback immediately in demo mode
+            const callback = await backendFetch(data.checkout_url);
+            const callbackData = await callback.json();
+            if (!callback.ok) {
+                showNotification(callbackData.error || 'Payment simulation failed', 'error');
+                return;
+            }
+            await this.loadWallet();
+            FarmData.investment.transactions.unshift({
+                id: generateId(),
+                type: 'Deposit',
+                rail: rail,
+                amount,
+                status: 'Settled',
+                date: new Date().toISOString().split('T')[0],
+                reference: data.reference
+            });
+            saveData();
+            closeModal();
+            this.render();
+            showNotification('Wallet deposit settled', 'success');
+        } catch (e) {
+            console.error('Payment failed:', e);
+            showNotification('Could not process payment. Backend unavailable?', 'error');
+        }
     },
 
     futureDate(months = 0, days = 0) {

@@ -452,7 +452,8 @@ body.widget-resizing .widget { user-select: none; }
     display: flex;
     flex-direction: column;
     z-index: 100;
-    transition: width var(--transition-base), opacity 1s ease-out, transform 0.8s ease-out;
+    overflow: hidden;
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
 }
 
 .sidebar-header {
@@ -466,28 +467,15 @@ body.widget-resizing .widget { user-select: none; }
 .logo { display: flex; align-items: center; gap: var(--space-md); }
 
 .logo-icon-wrap {
-    width: 42px; height: 42px;
-    background: var(--gradient-primary);
-    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-glow-brown);
     transition: transform var(--transition-spring);
 }
-.logo-icon-wrap:hover { transform: rotate(8deg) scale(1.05); }
-.logo-icon-wrap svg { width: 22px; height: 22px; color: #fff; }
+.logo-icon-wrap:hover { transform: scale(1.05); }
 
-.logo-text { display: flex; flex-direction: column; }
-.logo-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.5px; }
-.logo-subtitle { font-size: 0.65rem; font-weight: 600; color: var(--accent-green); letter-spacing: 2px; text-transform: uppercase; }
-
-.sidebar-toggle {
-    display: none;
-    background: transparent; border: none;
-    color: var(--text-secondary); cursor: pointer;
-    padding: var(--space-sm);
-}
+.sidebar-logo { text-decoration: none; color: inherit; background: transparent; }
+.sidebar-logo .logo-img { display: block; background: transparent; }
 
 .sidebar-nav { flex: 1; padding: var(--space-lg) 0; overflow-y: auto; }
 .nav-list { list-style: none; }
@@ -542,7 +530,59 @@ body.widget-resizing .widget { user-select: none; }
 .main-content {
     margin-left: var(--sidebar-width);
     min-height: 100vh;
-    transition: margin-left var(--transition-base), opacity 1s ease-out, transform 0.8s ease-out;
+    transition: margin-left 0.3s ease-in-out, opacity 1s ease-out, transform 0.8s ease-out;
+}
+
+/* ========================================
+   COLLAPSIBLE SIDEBAR
+   ======================================== */
+
+/* Sidebar toggle button in header */
+.sidebar-toggle-btn {
+    display: none;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.sidebar-toggle-btn:hover {
+    background: var(--accent-brown);
+    color: #fff;
+}
+.sidebar-toggle-btn .icon-closed { display: none; }
+.sidebar-toggle-btn .icon-open { display: block; }
+
+/* Header logo */
+.header-logo {
+    height: 34px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+
+/* Collapsed state */
+body.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+    width: 0;
+}
+body.sidebar-collapsed .main-content {
+    margin-left: 0;
+}
+body.sidebar-collapsed .sidebar-toggle-btn .icon-open { display: none; }
+body.sidebar-collapsed .sidebar-toggle-btn .icon-closed { display: block; }
+
+/* Desktop only — show toggle button */
+@media (min-width: 769px) {
+    .sidebar-toggle-btn {
+        display: inline-flex;
+    }
 }
 
 .top-header {
@@ -557,15 +597,81 @@ body.widget-resizing .widget { user-select: none; }
 }
 
 .header-left { display: flex; align-items: center; gap: var(--space-md); }
-.mobile-menu-btn {
-    display: none;
-    background: transparent; border: none;
-    color: var(--text-primary); cursor: pointer;
-    padding: var(--space-sm);
-}
-.page-title { font-size: 1.5rem; font-weight: 600; }
 
 .header-right { display: flex; align-items: center; gap: var(--space-lg); }
+
+/* Header dropdowns */
+.header-dropdown-wrap { position: relative; }
+.notification-dropdown,
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 280px;
+    max-width: 340px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    padding: var(--space-sm) 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.notification-dropdown { min-width: 320px; }
+.dropdown-header {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: var(--space-xs);
+}
+.notification-list { list-style: none; padding: 0; margin: 0; }
+.notification-list li {
+    padding: var(--space-sm) var(--space-md);
+    display: flex;
+    gap: var(--space-sm);
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+.notification-list li:last-child { border-bottom: none; }
+.notification-list li i { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+.notification-list .notif-high { color: var(--accent-red); }
+.notification-list .notif-medium { color: var(--accent-amber); }
+.notification-list .notif-info { color: var(--accent-blue); }
+.notification-list .notif-success { color: var(--accent-green); }
+.notification-empty {
+    padding: var(--space-lg);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* User dropdown */
+.dropdown-user-info {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: var(--space-xs);
+}
+.dropdown-user-info strong { display: block; font-size: 0.9rem; }
+.dropdown-user-info span { font-size: 0.75rem; color: var(--text-muted); }
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: background 0.15s ease;
+}
+.dropdown-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.dropdown-item i { width: 16px; height: 16px; }
+.dropdown-divider { height: 1px; background: var(--border-color); margin: var(--space-xs) 0; }
 
 .weather-widget {
     display: flex; align-items: center; gap: var(--space-sm);
@@ -672,8 +778,21 @@ body.widget-resizing .widget { user-select: none; }
 
 .stat-icon svg { width: 24px; height: 24px; }
 .stat-content { flex: 1; }
-.stat-value { display: block; font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.stat-label { display: block; font-size: 0.85rem; color: var(--text-secondary); }
+.stat-value { display: block; font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; min-height: 1.75rem; }
+.stat-label { display: block; font-size: 0.85rem; color: var(--text-secondary); min-height: 0.85rem; }
+
+/* Skeleton shimmer for loading states */
+.skeleton {
+    background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-elevated) 50%, var(--bg-tertiary) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: var(--radius-sm);
+    color: transparent !important;
+}
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
 
 .stat-trend { display: flex; align-items: center; gap: var(--space-xs); font-size: 0.75rem; font-weight: 500; }
 .stat-trend.up { color: var(--accent-green); }
@@ -705,6 +824,14 @@ body.widget-resizing .widget { user-select: none; }
 .card-title svg { width: 18px; height: 18px; color: var(--accent-brown-light); }
 .card-link { font-size: 0.85rem; color: var(--accent-brown-light); }
 .card-body { padding: var(--space-lg); }
+
+/* Goal card header — default (brown) theme */
+.goal-card-header {
+    background: color-mix(in srgb, var(--accent-brown) 7%, transparent);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.goal-card-title { color: var(--accent-brown-light); }
+.goal-card-subtitle { font-size: 0.8rem; color: var(--text-secondary); }
 
 .chart-filter {
     background: var(--bg-tertiary); border: 1px solid var(--border-color);
@@ -1065,9 +1192,24 @@ body.widget-resizing .widget { user-select: none; }
     display: flex; align-items: center; justify-content: center;
     opacity: 0;
     transition: opacity var(--transition-fast);
+    z-index: 10;
 }
 .cctv-feed:hover .cctv-expand-btn { opacity: 1; }
 .cctv-expand-btn svg { width: 14px; height: 14px; }
+
+/* CCTV fullscreen expand */
+.cctv-feed.cctv-fullscreen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: 9999;
+    border-radius: 0;
+    aspect-ratio: auto;
+}
+.cctv-feed.cctv-fullscreen video,
+.cctv-feed.cctv-fullscreen img {
+    width: 100%; height: 100%; object-fit: contain;
+}
 
 /* UAV Link Analysis toggle */
 .uav-link-toggle {
@@ -1505,8 +1647,6 @@ body.widget-resizing .widget { user-select: none; }
 .report-preview { margin-top: var(--space-xl); }
 .report-content h4 { margin: var(--space-lg) 0 var(--space-md); color: var(--accent-brown-light); }
 
-.sidebar-overlay { display: none; }
-
 /* ========================================
    CATTLE INVEST MOBILE FINTECH
    ======================================== */
@@ -1855,26 +1995,6 @@ body:not([data-weather-theme]) {
     .finance-pipeline { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 1200px) {
-    .sidebar-overlay {
-        display: block; position: fixed; inset: 0;
-        background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-        z-index: 90; opacity: 0; pointer-events: none;
-        transition: opacity var(--transition-base);
-    }
-    .sidebar-overlay.active { opacity: 1; pointer-events: auto; }
-    
-    .sidebar {
-        transform: translateX(-100%);
-        transition: transform var(--transition-base);
-    }
-    .sidebar.active { transform: translateX(0); }
-    .main-content { margin-left: 0; }
-    .mobile-menu-btn { display: block; }
-    .sidebar-toggle { display: block; }
-    .page-container { padding: var(--space-md); }
-}
-
 @media (max-width: 768px) {
     html { height: 100%; }
     body {
@@ -1885,10 +2005,8 @@ body:not([data-weather-theme]) {
     }
     body.app-loading { overflow: hidden; }
 
-    .sidebar-overlay,
     .sidebar-header,
-    .sidebar-footer,
-    .mobile-menu-btn {
+    .sidebar-footer {
         display: none !important;
     }
     .sidebar {
@@ -1960,9 +2078,8 @@ body:not([data-weather-theme]) {
         padding: env(safe-area-inset-top) var(--space-md) 0;
         align-items: center;
     }
-    .page-title {
-        font-size: 1.05rem;
-    }
+    .header-logo { height: 26px; }
+    .sidebar-toggle-btn { display: none; }
     .header-right {
         gap: var(--space-sm);
     }
@@ -2075,6 +2192,56 @@ body:not([data-weather-theme]) {
     }
     .finance-mini-stat {
         padding: 0.8rem;
+    }
+
+    /* Intelligence page mobile fixes */
+    #intelligencePage .data-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        font-size: 0.72rem;
+    }
+    #intelligencePage .data-table thead,
+    #intelligencePage .data-table tbody,
+    #intelligencePage .data-table tr,
+    #intelligencePage .data-table th,
+    #intelligencePage .data-table td {
+        white-space: nowrap;
+    }
+    #intelligencePage audio {
+        max-width: 100%;
+        width: 100%;
+    }
+    #intelligencePage img {
+        max-width: 100%;
+        height: auto;
+    }
+}
+
+@media (max-width: 380px) {
+    /* Extra narrow screens (iPhone SE, older Androids) */
+    #intelligencePage .card-body {
+        padding: var(--space-sm);
+    }
+    #intelligencePage .data-table {
+        font-size: 0.68rem;
+    }
+    #voiceNotesPanel .btn,
+    #weightEstimatePanel .btn,
+    #ndviPanel .btn,
+    #simulatorPanel .btn {
+        width: 100%;
+    }
+    #voiceNotesPanel input,
+    #weightEstimatePanel input,
+    #ndviPanel input,
+    #theftAlertPanel input,
+    #theftAlertPanel select,
+    #simulatorPanel input,
+    #simulatorPanel select {
+        width: 100% !important;
+        max-width: 100% !important;
     }
 }
 

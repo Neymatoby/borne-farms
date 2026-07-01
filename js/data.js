@@ -3,14 +3,111 @@
 // Cattle-focused with feed tiers
 // ========================================
 
+// Bump this whenever the seeded demo dataset changes so existing
+// browsers refresh their operational data instead of showing stale zeros.
+const SEED_VERSION = 5;
+
+// Backend API URL (same Flask server that powers the AI video analysis)
+const BACKEND_API_URL = 'http://127.0.0.1:5000/api/farm';
+let _backendSyncTimer = null;
+let _backendAvailable = false;
+
+function getAuthToken() {
+    return localStorage.getItem('borne_auth_token') || '';
+}
+function getAuthHeaders() {
+    const token = getAuthToken();
+    return token ? { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json', 'Content-Type': 'application/json' }
+                  : { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+}
+function setAuth(token, user) {
+    if (token) localStorage.setItem('borne_auth_token', token);
+    else localStorage.removeItem('borne_auth_token');
+    if (user) localStorage.setItem('borne_user', JSON.stringify(user));
+    else localStorage.removeItem('borne_user');
+}
+function getAuthUser() {
+    try { return JSON.parse(localStorage.getItem('borne_user') || 'null'); } catch { return null; }
+}
+function logout() {
+    setAuth(null, null);
+}
+async function backendFetch(path, options = {}) {
+    const url = 'http://127.0.0.1:5000' + path;
+    const opts = {
+        ...options,
+        headers: { ...getAuthHeaders(), ...(options.headers || {}) }
+    };
+    if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+        opts.body = JSON.stringify(options.body);
+    }
+    return fetch(url, opts);
+}
+
 function loadData() {
     const saved = localStorage.getItem('borne_farm_data');
-    if (saved) return JSON.parse(saved);
-    return getDefaultData();
+    if (!saved) return getDefaultData();
+
+    const data = JSON.parse(saved);
+    if (data.__seedVersion !== SEED_VERSION) {
+        // Refresh demo/operational fields; preserve goals, investment,
+        // organization and camera customisations the user may have changed.
+        const fresh = getDefaultData();
+        ['livestock', 'locations', 'monthlyStats', 'feedInventory',
+         'dailyFeedConsumption', 'activeHealthIssues', 'recentMovements',
+         'feedingLogs', 'milkHistory', 'finance'].forEach(k => { data[k] = fresh[k]; });
+        data.feedTiers = data.feedTiers || fresh.feedTiers;
+        data.__seedVersion = SEED_VERSION;
+        localStorage.setItem('borne_farm_data', JSON.stringify(data));
+    }
+    return data;
+}
+
+// Attempt to sync state from the backend on page load.
+// If the backend is reachable, its data takes precedence (it's the source
+// of truth). If not, we fall back to localStorage silently.
+async function syncFromBackend() {
+    try {
+        const res = await backendFetch('/api/farm', { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return;
+        const remote = await res.json();
+        if (remote && typeof remote === 'object' && remote.__seedVersion) {
+            // Always merge the latest frontend defaults into the remote data so that
+            // newly added v5 fields (vaccinationRecords, weightHistory, etc.) are present.
+            const defaults = getDefaultData();
+            FarmData = deepMerge(defaults, remote);
+            FarmData.__seedVersion = SEED_VERSION;
+            localStorage.setItem('borne_farm_data', JSON.stringify(FarmData));
+            _backendAvailable = true;
+            // Push merged data back to the backend so it stays in sync
+            saveData();
+            // Re-run any module renders that depend on FarmData
+            if (typeof DashboardModule !== 'undefined' && DashboardModule.render) DashboardModule.render();
+            if (typeof FinanceModule !== 'undefined' && FinanceModule.init) FinanceModule.init();
+        }
+    } catch (_) {
+        // Backend offline — continue with localStorage data
+        _backendAvailable = false;
+    }
+}
+
+function deepMerge(target, source) {
+    if (source === null || typeof source !== 'object') return source;
+    if (Array.isArray(source)) return source;
+    const result = { ...target };
+    for (const key of Object.keys(source)) {
+        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+            result[key] = deepMerge(result[key] || {}, source[key]);
+        } else {
+            result[key] = source[key];
+        }
+    }
+    return result;
 }
 
 function getDefaultData() {
     return {
+        __seedVersion: SEED_VERSION,
         organization: {
             id: 'borne',
             name: 'BORNE FARMS',
@@ -20,18 +117,18 @@ function getDefaultData() {
         // Cattle-only livestock
         livestock: {
             cattle: {
-                bull: { count: 0, pregnant: 0, sick: 0 },
-                cow: { count: 0, pregnant: 0, sick: 0 },
-                calf: { count: 0, pregnant: 0, sick: 0 }
+                bull: { count: 14, pregnant: 0, sick: 1 },
+                cow: { count: 132, pregnant: 38, sick: 2 },
+                calf: { count: 47, pregnant: 0, sick: 1 }
             }
         },
 
-        // Location counts
+        // Location counts (sum ≈ total herd of 193)
         locations: {
-            paddock: 0,
-            pasture: 0,
-            transport: 0,
-            quarantine: 0
+            paddock: 96,
+            pasture: 78,
+            transport: 8,
+            quarantine: 11
         },
 
         // Daily/Weekly/Monthly Goals
@@ -48,26 +145,47 @@ function getDefaultData() {
 
         // Monthly stats
         monthlyStats: {
-            births: 0,
-            deaths: 0,
-            sold: 0,
-            purchased: 0,
-            milkProduction: 0
+            births: 12,
+            deaths: 2,
+            sold: 9,
+            purchased: 16,
+            milkProduction: 845
+        },
+
+        // Milk production history as dated entries (L/day), last 7 days
+        milkHistory: [810, 828, 842, 806, 861, 833, 845].map((v, i, a) => ({
+            date: new Date(Date.now() - (a.length - 1 - i) * 86400000).toISOString().split('T')[0],
+            liters: v
+        })),
+
+        // Monthly finance summary (NGN)
+        finance: {
+            currency: '₦',
+            income: [
+                { label: 'Milk sales', value: 1520000 },
+                { label: 'Cattle sales', value: 740000 },
+                { label: 'Other', value: 220000 }
+            ],
+            expense: [
+                { label: 'Feed', value: 880000 },
+                { label: 'Vet & health', value: 310000 },
+                { label: 'Labour', value: 340000 }
+            ]
         },
 
         // Feed inventory (kg)
         feedInventory: {
-            hay: { quantity: 0, costPerKg: 150, tier: 1 },
-            silage: { quantity: 0, costPerKg: 120, tier: 2 },
-            grainMix: { quantity: 0, costPerKg: 250, tier: 2 },
-            proteinSupplement: { quantity: 0, costPerKg: 450, tier: 3 },
-            mineralLick: { quantity: 0, costPerKg: 380, tier: 3 },
-            premiumBlend: { quantity: 0, costPerKg: 600, tier: 4 }
+            hay: { quantity: 12400, costPerKg: 150, tier: 1 },
+            silage: { quantity: 8600, costPerKg: 120, tier: 2 },
+            grainMix: { quantity: 4200, costPerKg: 250, tier: 2 },
+            proteinSupplement: { quantity: 1850, costPerKg: 450, tier: 3 },
+            mineralLick: { quantity: 940, costPerKg: 380, tier: 3 },
+            premiumBlend: { quantity: 1200, costPerKg: 600, tier: 4 }
         },
 
         dailyFeedConsumption: {
-            hay: 0, silage: 0, grainMix: 0,
-            proteinSupplement: 0, premiumBlend: 0
+            hay: 620, silage: 410, grainMix: 180,
+            proteinSupplement: 75, premiumBlend: 40
         },
 
         // Feed tier unlocks
@@ -80,17 +198,47 @@ function getDefaultData() {
 
         investment: getDefaultInvestmentData(),
 
-        // Health & movements
-        activeHealthIssues: [],
-        recentMovements: [],
-        feedingLogs: [],
+        // Health & movements (seeded demo records)
+        activeHealthIssues: [
+            { id: 'h1', disease: 'Mastitis', category: 'cow', severity: 'high', date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], count: 1 },
+            { id: 'h2', disease: 'Foot Rot', category: 'cow', severity: 'medium', date: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0], count: 1 }
+        ],
+        vaccinationRecords: [
+            { id: 'v1', vaccine: 'FMD (Foot & Mouth)', category: 'cow', date: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], count: 45, handler: 'Dr. Adeyemi' },
+            { id: 'v2', vaccine: 'CBPP (Pleuropneumonia)', category: 'cow', date: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0], count: 38, handler: 'Dr. Adeyemi' },
+            { id: 'v3', vaccine: 'Anthrax', category: 'bull', date: new Date(Date.now() - 45 * 86400000).toISOString().split('T')[0], count: 12, handler: 'Ibrahim' }
+        ],
+        // Weight tracking — weekly average weight per category (kg)
+        weightHistory: [
+            { week: -3, bull: 410, cow: 348, calf: 92, avg: 312 },
+            { week: -2, bull: 418, cow: 352, calf: 98, avg: 316 },
+            { week: -1, bull: 425, cow: 358, calf: 105, avg: 321 },
+            { week: 0,  bull: 432, cow: 365, calf: 112, avg: 327 }
+        ],
+        // Weekly feed consumption history (kg per week)
+        feedConsumptionHistory: [
+            { week: -3, hay: 4200, silage: 2800, grainMix: 1200, total: 8200 },
+            { week: -2, hay: 4350, silage: 2900, grainMix: 1250, total: 8500 },
+            { week: -1, hay: 4180, silage: 2870, grainMix: 1260, total: 8310 },
+            { week: 0,  hay: 4340, silage: 2870, grainMix: 1300, total: 8510 }
+        ],
+        recentMovements: [
+            { id: 'm1', date: new Date(Date.now() - 2 * 3600000).toISOString(), animalId: 'BRN-WF-204', from: 'paddock', to: 'pasture', reason: 'Rotation', handler: 'Ibrahim', count: 1 },
+            { id: 'm2', date: new Date(Date.now() - 6 * 3600000).toISOString(), animalId: 'BRN-CW-051', from: 'pasture', to: 'quarantine', reason: 'Health check', handler: 'Grace', count: 1 },
+            { id: 'm3', date: new Date(Date.now() - 26 * 3600000).toISOString(), animalId: 'BRN-BR-118', from: 'transport', to: 'paddock', reason: 'New arrival', handler: 'Musa', count: 1 },
+            { id: 'm4', date: new Date(Date.now() - 50 * 3600000).toISOString(), animalId: 'BRN-CF-309', from: 'paddock', to: 'pasture', reason: 'Weaning group', handler: 'Ibrahim', count: 1 }
+        ],
+        feedingLogs: [
+            { id: 'f1', date: new Date(Date.now() - 3 * 3600000).toISOString(), location: 'paddock', feedType: 'hay', quantity: 420, animalsCount: 96, handler: 'Musa' },
+            { id: 'f2', date: new Date(Date.now() - 9 * 3600000).toISOString(), location: 'pasture', feedType: 'silage', quantity: 260, animalsCount: 78, handler: 'Grace' }
+        ],
 
         // CCTV cameras
         cameras: [
-            { id: 'uav01', name: 'Drone Feed', ip: '192.168.1.201', status: 'online', resolution: '4K' },
-            { id: 'cam02', name: 'Feeding Station', ip: '192.168.1.102', status: 'online', resolution: '1080p' },
-            { id: 'cam03', name: 'Milking Parlor', ip: '192.168.1.103', status: 'online', resolution: '720p' },
-            { id: 'cam04', name: 'Main Gate', ip: '192.168.1.104', status: 'offline', resolution: '720p' }
+            { id: 'uav01', name: 'Drone Feed', ip: '192.168.1.201', stream_url: '', status: 'online', resolution: '4K' },
+            { id: 'cam02', name: 'Feeding Station', ip: '192.168.1.102', stream_url: '', status: 'online', resolution: '1080p' },
+            { id: 'cam03', name: 'Milking Parlor', ip: '192.168.1.103', stream_url: '', status: 'online', resolution: '720p' },
+            { id: 'cam04', name: 'Main Gate', ip: '192.168.1.104', stream_url: '', status: 'offline', resolution: '720p' }
         ],
 
         lastUpdated: new Date().toISOString()
@@ -100,15 +248,15 @@ function getDefaultData() {
 function getDefaultInvestmentData() {
     return {
         auth: {
-            provider: 'Supabase Auth + Passkeys',
-            status: 'kyc-ready',
+            provider: 'Local Auth (Demo)',
+            status: 'kyc-pending',
             riskLevel: 'standard',
             methods: ['Phone OTP', 'Email OTP', 'Passkey', 'BVN/NIN KYC']
         },
         paymentRails: [
-            { key: 'paystack', name: 'Paystack', region: 'Nigeria', methods: ['Card', 'Bank Transfer', 'USSD'], status: 'ready' },
-            { key: 'flutterwave', name: 'Flutterwave', region: 'Africa + global cards', methods: ['Card', 'Mobile Money', 'Bank Transfer'], status: 'ready' },
-            { key: 'stripe', name: 'Stripe', region: 'Global', methods: ['Card', 'Apple Pay', 'Google Pay'], status: 'planned' }
+            { key: 'paystack', name: 'Paystack', region: 'Nigeria', methods: ['Card', 'Bank Transfer', 'USSD'], status: 'Demo' },
+            { key: 'flutterwave', name: 'Flutterwave', region: 'Africa + global cards', methods: ['Card', 'Mobile Money', 'Bank Transfer'], status: 'Demo' },
+            { key: 'stripe', name: 'Stripe', region: 'Global', methods: ['Card', 'Apple Pay', 'Google Pay'], status: 'Planned' }
         ],
         wallet: {
             currency: 'NGN',
@@ -127,7 +275,7 @@ function getDefaultInvestmentData() {
                 minUnits: 1,
                 feedTier: 'Basic',
                 expectedMonthlyGrowth: 4.8,
-                image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Fula%20cattle%20herders%20by%20John%20Atherton.jpg'
+                image: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Fula_cattle_herders_by_John_Atherton.jpg'
             },
             {
                 id: 'lot-sokoto',
@@ -139,7 +287,7 @@ function getDefaultInvestmentData() {
                 minUnits: 1,
                 feedTier: 'Advanced',
                 expectedMonthlyGrowth: 5.6,
-                image: 'https://commons.wikimedia.org/wiki/Special:FilePath/A%20herd%20of%20brown%20and%20white%20horned%20cattle%20in%20a%20landscape%20-%20Province%20of%20Bauchi.jpg'
+                image: 'https://upload.wikimedia.org/wikipedia/commons/8/8c/Sokoto_Gudali_breed.jpg'
             },
             {
                 id: 'lot-brahman',
@@ -151,7 +299,7 @@ function getDefaultInvestmentData() {
                 minUnits: 1,
                 feedTier: 'Premium',
                 expectedMonthlyGrowth: 6.4,
-                image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Brahman%20%28Bos%20indicus%29.jpg'
+                image: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Brahman_(Bos_indicus).jpg'
             },
             {
                 id: 'lot-holstein',
@@ -163,7 +311,7 @@ function getDefaultInvestmentData() {
                 minUnits: 1,
                 feedTier: 'Premium',
                 expectedMonthlyGrowth: 5.9,
-                image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Holstein%20cow%20with%20one-day%20calf%2001.jpg'
+                image: 'https://upload.wikimedia.org/wikipedia/commons/1/11/Holstein_cow_with_one-day_calf_01.jpg'
             }
         ],
         holdings: [
@@ -236,6 +384,15 @@ ensureCameraData();
 function saveData() {
     FarmData.lastUpdated = new Date().toISOString();
     localStorage.setItem('borne_farm_data', JSON.stringify(FarmData));
+    // Debounced push to backend (fire-and-forget; localStorage is the fallback)
+    if (_backendSyncTimer) clearTimeout(_backendSyncTimer);
+    _backendSyncTimer = setTimeout(() => {
+        backendFetch('/api/farm', {
+            method: 'PUT',
+            body: FarmData
+        }).then(() => { _backendAvailable = true; })
+          .catch(() => { _backendAvailable = false; });
+    }, 800);
 }
 
 const SubCategoryLabels = {
@@ -364,8 +521,44 @@ function recordFeeding(feeding) {
     saveData();
 }
 
+// Normalize any legacy numeric milkHistory ([840, 845, ...]) into dated entries.
+function normalizeMilkHistory() {
+    let h = FarmData.milkHistory;
+    if (!Array.isArray(h)) { FarmData.milkHistory = []; return; }
+    if (h.length && typeof h[0] !== 'object') {
+        FarmData.milkHistory = h.map((v, i, a) => ({
+            date: new Date(Date.now() - (a.length - 1 - i) * 86400000).toISOString().split('T')[0],
+            liters: v
+        }));
+    }
+}
+
+function recordMilk(liters, dateStr) {
+    liters = parseInt(liters) || 0;
+    dateStr = dateStr || new Date().toISOString().split('T')[0];
+    normalizeMilkHistory();
+
+    const existing = FarmData.milkHistory.find(e => e.date === dateStr);
+    if (existing) existing.liters = liters;
+    else FarmData.milkHistory.push({ date: dateStr, liters });
+
+    // Keep chronological order and cap at 14 days of history
+    FarmData.milkHistory.sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (FarmData.milkHistory.length > 14) {
+        FarmData.milkHistory = FarmData.milkHistory.slice(-14);
+    }
+
+    // KPI reflects the most recent day on record
+    const latest = FarmData.milkHistory[FarmData.milkHistory.length - 1];
+    FarmData.monthlyStats.milkProduction = latest ? latest.liters : liters;
+    saveData();
+}
+
 function resetData() {
     FarmData = getDefaultData();
     saveData();
     return FarmData;
 }
+
+// Kick off background sync from backend on load (non-blocking)
+syncFromBackend();

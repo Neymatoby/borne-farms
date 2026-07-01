@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borne Farms — Cattle Traceability</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: #f1efdf; color: #212529; line-height: 1.6; }
+        .container { max-width: 640px; margin: 0 auto; padding: 24px; }
+        .header { text-align: center; padding: 32px 0; }
+        .header img { height: 60px; margin-bottom: 12px; }
+        .header h1 { font-size: 1.4rem; font-weight: 600; color: #07503f; }
+        .header p { font-size: 0.85rem; color: #6d6d6d; }
+        .card { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+        .card h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; color: #07503f; display: flex; align-items: center; gap: 8px; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .info-row:last-child { border-bottom: none; }
+        .info-row span:first-child { color: #6d6d6d; }
+        .info-row span:last-child { font-weight: 500; }
+        .timeline-item { padding: 10px 0; border-left: 3px solid #07503f; padding-left: 16px; margin-left: 8px; font-size: 0.85rem; }
+        .timeline-item .date { color: #6d6d6d; font-size: 0.78rem; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; }
+        .badge.active { background: #e6ecd5; color: #07503f; }
+        .badge.high { background: #fee2e2; color: #dc2626; }
+        .badge.medium { background: #fef3c7; color: #d97706; }
+        .badge.low { background: #d1fae5; color: #059669; }
+        .loading { text-align: center; padding: 48px; color: #6d6d6d; }
+        .error { text-align: center; padding: 48px; color: #dc2626; }
+        .footer { text-align: center; padding: 24px; font-size: 0.78rem; color: #6d6d6d; }
+        @media (max-width: 380px) {
+            .container { padding: 16px; }
+            .card { padding: 16px; }
+            .header { padding: 20px 0; }
+            .header h1 { font-size: 1.2rem; }
+            .info-row { font-size: 0.82rem; }
+            .info-row span:last-child { text-align: right; word-break: break-word; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="assets/borne-farms-logo-transparent.png" alt="Borne Farms" onerror="this.style.display='none'">
+            <h1>Cattle Traceability Record</h1>
+            <p>Paddock-to-plate provenance — verified by Borne Farms</p>
+        </div>
+        <div id="content" class="loading">
+            <p>Loading traceability record...</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 Borne Farms. A pastoral platform.</p>
+        </div>
+    </div>
+    <script>
+        const BACKEND_URL = 'http://127.0.0.1:5000';
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+
+        async function loadRecord() {
+            if (!token) {
+                document.getElementById('content').className = 'error';
+                document.getElementById('content').innerHTML = '<p>No QR token provided. Scan a valid Borne Farms QR code.</p>';
+                return;
+            }
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/traceability/${token}`);
+                if (!res.ok) throw new Error('Record not found');
+                const r = await res.json();
+                document.getElementById('content').className = '';
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>Cattle Identity</h2>
+                        <div class="info-row"><span>Tag / ID</span><span>${r.tag}</span></div>
+                        <div class="info-row"><span>Breed</span><span>${r.breed}</span></div>
+                        <div class="info-row"><span>Category</span><span style="text-transform:capitalize;">${r.category}</span></div>
+                        <div class="info-row"><span>Birth Date</span><span>${r.birth_date || 'N/A'}</span></div>
+                        <div class="info-row"><span>Current Weight</span><span>${r.weight_kg} kg</span></div>
+                        <div class="info-row"><span>Feed Tier</span><span>${r.feed_tier}</span></div>
+                        <div class="info-row"><span>Status</span><span><span class="badge ${r.status === 'active' ? 'active' : ''}">${r.status}</span></span></div>
+                    </div>
+
+                    ${r.health_history && r.health_history.length ? `
+                    <div class="card">
+                        <h2>Health History</h2>
+                        ${r.health_history.map(h => `
+                            <div class="timeline-item">
+                                <div><strong>${h.event}</strong> <span class="badge ${h.severity}">${h.severity}</span></div>
+                                <div class="date">${h.date}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+
+                    ${r.movement_history && r.movement_history.length ? `
+                    <div class="card">
+                        <h2>Movement History</h2>
+                        ${r.movement_history.map(m => `
+                            <div class="timeline-item">
+                                <div><strong>${m.from}</strong> &rarr; <strong>${m.to}</strong></div>
+                                <div>${m.reason}</div>
+                                <div class="date">${m.date}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+
+                    ${r.milk_yield_history && r.milk_yield_history.length ? `
+                    <div class="card">
+                        <h2>Milk Yield History</h2>
+                        ${r.milk_yield_history.map(m => `
+                            <div class="info-row"><span>${m.date}</span><span>${m.liters} liters</span></div>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+
+                    ${r.owner_shares && r.owner_shares.length ? `
+                    <div class="card">
+                        <h2>Ownership</h2>
+                        ${r.owner_shares.map(o => `
+                            <div class="info-row"><span>${o.owner_name || o.name || 'Owner'}</span><span>${(o.fraction * 100).toFixed(0)}%</span></div>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+
+                    <div class="card">
+                        <h2>Verification</h2>
+                        <div class="info-row"><span>QR Token</span><span style="font-family:monospace;font-size:0.78rem;">${r.qr_token}</span></div>
+                        <div class="info-row"><span>Record Created</span><span>${r.created_at}</span></div>
+                        <div class="info-row"><span>Last Updated</span><span>${r.updated_at}</span></div>
+                        <p style="font-size:0.78rem;color:#6d6d6d;margin-top:12px;">This record is verified by Borne Farms and traces the full lifecycle of this cattle unit from birth to current status.</p>
+                    </div>
+                `;
+            } catch (e) {
+                document.getElementById('content').className = 'error';
+                document.getElementById('content').innerHTML = `<p>${e.message}. This QR code may be invalid or the server is offline.</p>`;
+            }
+        }
+        loadRecord();
+    </script>
+</body>
+</html>

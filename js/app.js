@@ -10,12 +10,21 @@ const App = {
         if (this.initialized) return;
         console.log('Initializing BORNE FARMS Dashboard...');
 
+        // Check auth first; if not logged in, redirect to login page
+        const authed = await this.checkAuth();
+        if (!authed) {
+            window.location.href = 'login.html';
+            return;
+        }
+
         // Initialize Lucide icons
         lucide.createIcons();
 
         // Bind navigation
         this.bindNavigation();
-        this.bindMobileMenu();
+        this.initSidebarToggle();
+        this.initHeaderDropdowns();
+        this.initOrgSelector();
 
         // Drive the preloader sequence, then dismiss
         this.runPreloaderSequence();
@@ -126,36 +135,217 @@ const App = {
         });
     },
 
-    bindMobileMenu() {
-        const btn = document.getElementById('mobileMenuBtn');
+    initSidebarToggle() {
         const sidebar = document.getElementById('sidebar');
-        const closeBtn = document.getElementById('sidebarToggle');
-        const overlay = document.getElementById('sidebarOverlay');
-        
-        const closeSidebar = () => {
-            if (sidebar) sidebar.classList.remove('active');
-            if (overlay) overlay.classList.remove('active');
-        };
+        const main = document.getElementById('mainContent');
+        const toggle = document.getElementById('desktopSidebarToggle');
+        if (!sidebar || !main || !toggle) return;
 
-        const openSidebar = () => {
-            if (sidebar) sidebar.classList.add('active');
-            if (overlay) overlay.classList.add('active');
-        };
-
-        if (btn && sidebar) {
-            btn.addEventListener('click', (e) => { e.preventDefault(); openSidebar(); });
-            btn.addEventListener('touchstart', (e) => { e.preventDefault(); openSidebar(); }, {passive: false});
-            
-            if (closeBtn) {
-                closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeSidebar(); });
-                closeBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); closeSidebar(); }, {passive: false});
-            }
-            
-            if (overlay) {
-                overlay.addEventListener('click', closeSidebar);
-                overlay.addEventListener('touchstart', (e) => { e.preventDefault(); closeSidebar(); }, {passive: false});
-            }
+        const saved = localStorage.getItem('borne_sidebar_collapsed');
+        if (saved === 'true') {
+            document.body.classList.add('sidebar-collapsed');
+            toggle.setAttribute('aria-expanded', 'false');
+        } else {
+            toggle.setAttribute('aria-expanded', 'true');
         }
+
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const collapsed = document.body.classList.toggle('sidebar-collapsed');
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            localStorage.setItem('borne_sidebar_collapsed', String(collapsed));
+        });
+    },
+
+    // ====================
+    // AUTH
+    // ====================
+    async checkAuth() {
+        const token = localStorage.getItem('borne_auth_token');
+        if (!token) return false;
+        try {
+            const res = await backendFetch('/api/auth/me');
+            if (res.ok) {
+                const user = await res.json();
+                setAuth(token, user);
+                this.updateHeaderUser(user);
+                const gate = document.getElementById('authGate');
+                if (gate) gate.style.display = 'none';
+                return true;
+            }
+        } catch (e) {
+            console.error('Auth check failed:', e);
+        }
+        return false;
+    },
+
+    showAuthGate() {
+        const gate = document.getElementById('authGate');
+        if (!gate) return;
+        gate.style.display = 'flex';
+        document.body.classList.remove('app-loading');
+        const preloader = document.getElementById('preloader');
+        if (preloader) preloader.style.display = 'none';
+        const form = document.getElementById('loginForm');
+        const error = document.getElementById('loginError');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            error.style.display = 'none';
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            try {
+                const res = await backendFetch('/api/auth/login', {
+                    method: 'POST',
+                    body: { email, password }
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    error.textContent = data.error || 'Login failed';
+                    error.style.display = 'block';
+                    return;
+                }
+                setAuth(data.token, data.user);
+                this.updateHeaderUser(data.user);
+                gate.style.display = 'none';
+                // Sync backend data then init app
+                await syncFromBackend();
+                this.init();
+            } catch (err) {
+                error.textContent = 'Could not reach server. Make sure the backend is running.';
+                error.style.display = 'block';
+            }
+        });
+    },
+
+    updateHeaderUser(user) {
+        if (!user) return;
+        const name = document.getElementById('headerUserName');
+        const email = document.getElementById('headerUserEmail');
+        if (name) name.textContent = user.name || 'Farm Manager';
+        if (email) email.textContent = user.email || 'manager@bornefarms.com';
+    },
+
+    initHeaderDropdowns() {
+        // Notification bell
+        const notifBtn = document.getElementById('notificationBtn');
+        const notifDropdown = document.getElementById('notificationDropdown');
+        const notifList = document.getElementById('notificationList');
+        const notifBadge = document.getElementById('notificationBadge');
+
+        if (notifBtn && notifDropdown) {
+            notifBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = notifDropdown.style.display !== 'none';
+                notifDropdown.style.display = isOpen ? 'none' : 'block';
+                if (!isOpen) this.renderNotifications();
+            });
+        }
+
+        // User menu
+        const userBtn = document.getElementById('userMenuBtn');
+        const userDropdown = document.getElementById('userDropdown');
+        if (userBtn && userDropdown) {
+            userBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = userDropdown.style.display !== 'none';
+                userDropdown.style.display = isOpen ? 'none' : 'block';
+            });
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (notifDropdown && !notifDropdown.contains(e.target) && e.target !== notifBtn) {
+                notifDropdown.style.display = 'none';
+            }
+            if (userDropdown && !userDropdown.contains(e.target) && e.target !== userBtn && !userBtn?.contains(e.target)) {
+                userDropdown.style.display = 'none';
+            }
+        });
+    },
+
+    renderNotifications() {
+        const list = document.getElementById('notificationList');
+        const badge = document.getElementById('notificationBadge');
+        if (!list) return;
+
+        const alerts = [];
+
+        // Health alerts
+        const issues = FarmData.activeHealthIssues || [];
+        issues.forEach(h => {
+            alerts.push({
+                icon: 'alert-triangle',
+                class: h.severity === 'high' ? 'notif-high' : 'notif-medium',
+                text: `${h.disease} — ${h.severity} severity (${h.category})`
+            });
+        });
+
+        // Low feed stock alerts
+        const inv = FarmData.feedInventory || {};
+        const daily = FarmData.dailyFeedConsumption || {};
+        Object.entries(inv).forEach(([key, feed]) => {
+            const consumption = daily[key] || 0;
+            if (consumption > 0) {
+                const days = Math.floor(feed.quantity / consumption);
+                if (days <= 7) {
+                    alerts.push({
+                        icon: 'package-x',
+                        class: 'notif-high',
+                        text: `Low feed: ${key} — only ${days} days remaining`
+                    });
+                }
+            }
+        });
+
+        // Pending tasks
+        const tasks = (FarmData.goals && FarmData.goals.tasks) || [];
+        tasks.forEach(t => {
+            if (t.status === 'pending') {
+                alerts.push({
+                    icon: 'clock',
+                    class: 'notif-info',
+                    text: `Pending task: ${t.name}`
+                });
+            }
+        });
+
+        // Offline cameras
+        const cameras = FarmData.cameras || [];
+        cameras.forEach(c => {
+            if (c.status === 'offline') {
+                alerts.push({
+                    icon: 'video-off',
+                    class: 'notif-medium',
+                    text: `Camera offline: ${c.name}`
+                });
+            }
+        });
+
+        // Render
+        if (badge) badge.textContent = alerts.length;
+        if (alerts.length === 0) {
+            list.innerHTML = '<li class="notification-empty">No notifications</li>';
+        } else {
+            list.innerHTML = alerts.map(a => `
+                <li>
+                    <i data-lucide="${a.icon}" class="${a.class}"></i>
+                    <span>${a.text}</span>
+                </li>
+            `).join('');
+        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    },
+
+    initOrgSelector() {
+        const select = document.getElementById('orgSelect');
+        if (!select) return;
+        select.addEventListener('change', (e) => {
+            const val = e.target.value;
+            const org = FarmData.organization;
+            if (org && val === org.id) {
+                showNotification(`Active: ${org.name}`, 'success');
+            }
+        });
     },
 
     navigateTo(page) {
@@ -172,28 +362,6 @@ const App = {
         const pageEl = document.getElementById(`${page}Page`);
         if (pageEl) pageEl.classList.add('active');
 
-        // Title map
-        const titleMap = {
-            dashboard: 'Dashboard',
-            geospatial: 'Farm Map',
-            cctv: 'UAV & CCTV',
-            livestock: 'My Cattle',
-            feed: 'Feed & Tiers',
-            health: 'Health & Breeding',
-            movement: 'Movement Tracking',
-            reports: 'Reports & Analytics',
-            finance: 'Cattle Invest'
-        };
-
-        const pageTitle = document.getElementById('pageTitle');
-        if (pageTitle) pageTitle.textContent = titleMap[page] || 'Dashboard';
-
-        // Close mobile sidebar
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) sidebar.classList.remove('active');
-        const overlay = document.getElementById('sidebarOverlay');
-        if (overlay) overlay.classList.remove('active');
-
         // Initialize full map when navigating to geospatial
         if (page === 'geospatial') {
             // First init attempt after page becomes visible
@@ -205,6 +373,11 @@ const App = {
                     GeospatialModule.mainMap.setView(GeospatialModule.center, 18);
                 }
             }, 500);
+        }
+
+        // Initialize intelligence module when navigating to intelligence page
+        if (page === 'intelligence') {
+            setTimeout(() => IntelligenceModule.init(), 100);
         }
 
         lucide.createIcons();
@@ -234,6 +407,10 @@ function openModal(type) {
         case 'logFeeding':
             t = 'Log Feeding';
             c = getLogFeedingForm();
+            break;
+        case 'logMilk':
+            t = 'Log Milk Production';
+            c = getLogMilkForm();
             break;
         case 'reportHealth':
             t = 'Report Health Issue';
@@ -266,6 +443,14 @@ function openModal(type) {
         case 'paymentCheckout':
             t = 'Payment Checkout';
             c = FinanceModule.getPaymentCheckoutForm();
+            break;
+        case 'userProfile':
+            t = 'Profile';
+            c = getUserProfileView();
+            break;
+        case 'userSettings':
+            t = 'Settings';
+            c = getUserSettingsForm();
             break;
         default:
             t = 'Details';
@@ -328,6 +513,33 @@ function getAddCattleForm() {
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Add Cattle</button>
+            </div>
+        </form>
+    `;
+}
+
+function getLogMilkForm() {
+    const hist = FarmData.milkHistory || [];
+    const lastEntry = hist.length ? hist[hist.length - 1] : null;
+    const last = lastEntry ? (typeof lastEntry === 'object' ? lastEntry.liters : lastEntry) : 0;
+    const today = new Date().toISOString().split('T')[0];
+    return `
+        <form id="logMilkForm" onsubmit="DashboardModule.logMilk(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-input" name="date" value="${today}" max="${today}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Milk yield (litres)</label>
+                    <input type="number" class="form-input" name="liters" min="0" step="1"
+                        value="${last}" placeholder="e.g., 845" required autofocus>
+                </div>
+            </div>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Pick today, or backfill a past day — re-logging a date overwrites that day's reading.</small>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Log Milk</button>
             </div>
         </form>
     `;
@@ -480,14 +692,18 @@ function getReportHealthForm() {
 
 function getAddCameraForm() {
     return `
-        <form onsubmit="event.preventDefault(); closeModal(); showNotification('Camera added (connect IP stream to activate)', 'success');">
+        <form onsubmit="addCamera(event)">
             <div class="form-group">
                 <label class="form-label">Camera Name</label>
                 <input type="text" class="form-input" name="name" placeholder="e.g., North Pasture Cam" required>
             </div>
             <div class="form-group">
-                <label class="form-label">IP Address / RTSP URL</label>
-                <input type="text" class="form-input" name="ip" placeholder="e.g., rtsp://192.168.1.105:554/stream" required>
+                <label class="form-label">IP Address</label>
+                <input type="text" class="form-input" name="ip" placeholder="e.g., 192.168.1.105">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Stream URL (HTTP/HLS/MP4 only - RTSP won't work in browser)</label>
+                <input type="text" class="form-input" name="stream_url" placeholder="e.g., http://192.168.1.105/stream.m3u8">
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -509,6 +725,75 @@ function getAddCameraForm() {
             </div>
         </form>
     `;
+}
+
+async function addCamera(event) {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const body = {
+        name: fd.get('name'),
+        ip: fd.get('ip') || '',
+        stream_url: fd.get('stream_url') || '',
+        resolution: fd.get('resolution') || '1080p',
+        status: 'online'
+    };
+    try {
+        const res = await backendFetch('/api/cameras', { method: 'POST', body });
+        const cam = await res.json();
+        if (!res.ok) {
+            showNotification(cam.error || 'Could not add camera', 'error');
+            return;
+        }
+        if (cam && cam.id) FarmData.cameras.push(cam);
+        saveData();
+        closeModal();
+        showNotification('Camera added. Set a stream URL to go live.', 'success');
+    } catch (e) {
+        console.error('Add camera failed:', e);
+        showNotification('Backend unavailable. Camera not saved.', 'error');
+    }
+}
+
+function getUserProfileView() {
+    const user = getAuthUser() || { name: 'Farm Manager', email: 'manager@bornefarms.com', role: 'manager' };
+    return `
+        <div class="form-group">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-input" value="${user.name || ''}" readonly>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="text" class="form-input" value="${user.email || ''}" readonly>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Role</label>
+            <input type="text" class="form-input" value="${user.role || 'manager'}" readonly>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+        </div>
+    `;
+}
+
+function getUserSettingsForm() {
+    const saved = localStorage.getItem('borne_notifications') !== 'false';
+    return `
+        <form onsubmit="event.preventDefault(); saveUserSettings(this); closeModal(); showNotification('Settings saved','success');">
+            <div class="form-group" style="display:flex;align-items:center;gap:var(--space-sm);">
+                <input type="checkbox" id="notifToggle" name="notifications" ${saved ? 'checked' : ''}>
+                <label for="notifToggle" style="margin:0;">Enable notifications</label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+        </form>
+    `;
+}
+
+function saveUserSettings(form) {
+    const fd = new FormData(form);
+    localStorage.setItem('borne_notifications', fd.get('notifications') ? 'true' : 'false');
 }
 
 function getUpdateGoalsForm() {
@@ -671,7 +956,7 @@ function printReport() { window.print(); }
 
 function showNotification(message, type = 'info') {
     const el = document.createElement('div');
-    const bg = type === 'success' ? 'rgba(95,160,82,0.92)' : type === 'error' ? 'rgba(217,79,79,0.92)' : 'rgba(160,114,74,0.92)';
+    const bg = type === 'success' ? 'rgba(126,154,60,0.95)' : type === 'error' ? 'rgba(217,79,79,0.95)' : 'rgba(7,80,63,0.95)';
     el.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info'}"></i><span>${message}</span>`;
     el.style.cssText = `
         position:fixed;top:20px;right:20px;padding:1rem 1.5rem;

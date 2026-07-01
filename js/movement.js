@@ -60,7 +60,7 @@ const MovementModule = {
         showNotification('Movement recorded successfully', 'success');
         this.updateLocationCounts();
         this.renderHistory();
-        DashboardModule.populateMovements();
+        DashboardModule.refresh();
         lucide.createIcons();
     }
 };

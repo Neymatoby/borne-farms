@@ -228,3 +228,572 @@ html[data-theme="light"] .cctv-placeholder {
 /* finance section keeps its weather-mood accent, but the surface
    must follow the active base theme so light mode stays readable */
 html[data-theme="light"] body { --finance-surface: rgba(255, 255, 255, 0.92); }
+
+/* ================================================
+   ARVA — "pastoral editorial magazine spread"
+   Warm bone canvas, deep forest-green brand, quilted
+   pastel tiles, a single vivid-lime accent, dramatic
+   pill buttons (100px), serif/sans editorial pairing,
+   no harsh shadows. (refero.design)
+   ================================================ */
+
+/* Forest-green accent preset (primary = forest, secondary = sage-green) */
+html[data-accent="arva"] {
+    --p:#07503f; --p-l:#0a6b54; --p-d:#053b2e; --p-glow:rgba(7,80,63,.22);
+    --s:#7e9a3c; --s-l:#a7c25e; --s-d:#5c7329; --s-glow:rgba(126,154,60,.20);
+    --shadow-glow-brown: none;
+    --shadow-glow-green:  none;
+}
+
+/* Arva palette — re-skins the LIGHT base theme */
+html[data-theme="light"][data-accent="arva"],
+html[data-theme="light"] {
+    --bg-primary:   #f1efdf;   /* bone canvas */
+    --bg-secondary: #ffffff;   /* bright white card */
+    --bg-tertiary:  #efefef;   /* ash soft section */
+    --bg-elevated:  #ffffff;
+    --bg-glass:     rgba(241, 239, 223, 0.85);
+
+    --text-primary:   #212529;  /* charcoal */
+    --text-secondary: #353535;  /* graphite */
+    --text-muted:     #6d6d6d;  /* pewter */
+
+    --border-color: #c3cda7;    /* moss */
+    --border-light: #e6e3d2;
+
+    --gradient-card: #ffffff;
+    --gradient-hero: #f1efdf;
+
+    /* editorial flat — separation via border + pastel surfaces */
+    --shadow-sm: none; --shadow-md: none; --shadow-lg: none; --shadow-xl: none;
+    --shadow-glow-brown: none; --shadow-glow-green: none;
+}
+
+/* Arva geometry adapted for Borne Farms: square 0px radius everywhere */
+:root {
+    --radius-sm: 0px;
+    --radius-md: 0px;
+    --radius-lg: 0px;
+    --radius-xl: 0px;
+    --radius-full: 0px;
+}
+*, *::before, *::after { border-radius: 0 !important; }
+
+/* Editorial typography — light serif-style display headings via Inter weights */
+h1, h2, h3, h4,
+.hero-title, .stat-value, .section-title {
+    letter-spacing: -0.012em;
+    font-weight: 300;
+}
+
+/* ================================================
+   ARVA DASHBOARD SKIN
+   Editorial re-skin of the app shell. Scoped to the
+   Arva accent; these classes live only on dashboard.html,
+   so the marketing landing is unaffected.
+   ================================================ */
+html[data-accent="arva"] { --arva-lime: #e8fe85; }
+html[data-accent="arva"] {
+    --serif: "Cormorant Garamond", "Reckless", Georgia, serif;
+}
+
+/* Serif editorial headings */
+html[data-accent="arva"] .card-title,
+html[data-accent="arva"] .logo-title,
+html[data-accent="arva"] .stat-value {
+    font-family: var(--serif);
+    letter-spacing: -0.012em;
+}
+html[data-accent="arva"] .card-title  { font-weight: 600; font-size: 1.18rem; }
+html[data-accent="arva"] .stat-value  { font-weight: 500; font-size: 2.15rem; }
+
+/* Forest-green sidebar with lime active state */
+html[data-accent="arva"] .sidebar {
+    background: #07503f;
+    border-right: 1px solid #053b2e;
+}
+html[data-accent="arva"] .sidebar-header,
+html[data-accent="arva"] .sidebar-footer { border-color: rgba(255,255,255,.12); }
+html[data-accent="arva"] .logo-title { color: #fff; }
+html[data-accent="arva"] .logo-subtitle { color: var(--arva-lime); }
+html[data-accent="arva"] .logo-icon-wrap { background: var(--arva-lime); }
+html[data-accent="arva"] .logo-icon-wrap svg { color: #07503f; }
+html[data-accent="arva"] .nav-link { color: rgba(255,255,255,.82); }
+html[data-accent="arva"] .nav-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+html[data-accent="arva"] .nav-link.active {
+    background: rgba(232,254,133,.14);
+    color: var(--arva-lime);
+    border-left-color: var(--arva-lime);
+}
+html[data-accent="arva"] .nav-link.active::before { background: var(--arva-lime); }
+html[data-accent="arva"] .org-select {
+    background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.20); color: #fff;
+}
+html[data-accent="arva"] .org-label { color: rgba(255,255,255,.6); }
+
+/* Quilt-style stat cards: solid pastel surfaces, ink text */
+html[data-accent="arva"] .stat-card { background: #fff; border: 1px solid var(--border-color); }
+html[data-accent="arva"] .stat-card::before { display: none; }
+html[data-accent="arva"] .stat-card.stat-brown,
+html[data-accent="arva"] .stat-card.stat-green  { background: #e6ecd5; }  /* sage */
+html[data-accent="arva"] .stat-card.stat-blue,
+html[data-accent="arva"] .stat-card.stat-purple { background: #b2cee7; }  /* sky  */
+html[data-accent="arva"] .stat-card.stat-amber,
+html[data-accent="arva"] .stat-card.stat-orange,
+html[data-accent="arva"] .stat-card.stat-pink   { background: #fceace; }  /* peach */
+html[data-accent="arva"] .stat-card.stat-red     { background: #efefef; }  /* ash — alerts stay neutral */
+html[data-accent="arva"] .stat-card .stat-value,
+html[data-accent="arva"] .stat-card .stat-label { color: #212529; }
+html[data-accent="arva"] .stat-icon { background: rgba(33,37,41,.07) !important; color: #07503f !important; }
+html[data-accent="arva"] .skeleton {
+    background: linear-gradient(90deg, #e6e2d2 25%, #f1efdf 50%, #e6e2d2 75%);
+    background-size: 200% 100%;
+}
+
+/* Cards & accents */
+html[data-accent="arva"] .card { background: #fff; }
+html[data-accent="arva"] .card-title svg,
+html[data-accent="arva"] .card-link { color: #07503f; }
+
+/* Goal card header — Arva forest tint */
+html[data-accent="arva"] .goal-card-header {
+    background: color-mix(in srgb, #07503f 7%, transparent);
+}
+html[data-accent="arva"] .goal-card-title { color: #07503f; }
+html[data-accent="arva"] .goal-card-subtitle { color: var(--text-muted); }
+
+/* Weather panel + AI advisor — Arva light borders + forest accents */
+html[data-accent="arva"] .weather-panel { background: #fff; }
+html[data-accent="arva"] .advisor-card { background: var(--bg-tertiary) !important; border-color: var(--border-color) !important; }
+html[data-accent="arva"] .weather-tab-btn { color: var(--text-secondary); }
+html[data-accent="arva"] .weather-tab-btn.active { background: #07503f; color: #fff; }
+html[data-accent="arva"] .cattle-care-alert { border-color: var(--border-color); }
+
+/* Sidebar toggle button — Arva styled */
+html[data-accent="arva"] .sidebar-toggle-btn {
+    background: #0a6b54;
+    border-color: rgba(255,255,255,0.15);
+    color: #e8fe85;
+}
+html[data-accent="arva"] .sidebar-toggle-btn:hover {
+    background: #07503f;
+    color: #fff;
+}
+
+/* Header dropdowns — Arva styled */
+html[data-accent="arva"] .notification-dropdown,
+html[data-accent="arva"] .user-dropdown {
+    background: #fff;
+    border-color: var(--border-color);
+    box-shadow: 0 8px 30px rgba(33,37,41,0.12);
+}
+html[data-accent="arva"] .dropdown-header { color: #07503f; }
+html[data-accent="arva"] .dropdown-item:hover { background: #f1efdf; color: #07503f; }
+html[data-accent="arva"] .dropdown-user-info span { color: #6d6d6d; }
+html[data-accent="arva"] .notification-list li { border-color: var(--border-color); }
+
+/* Mobile: weather tabs bigger + touch-friendly */
+@media (max-width: 768px) {
+    html[data-accent="arva"] .weather-tab-btn {
+        padding: 8px 14px !important;
+        font-size: 0.85rem !important;
+    }
+    html[data-accent="arva"] .weather-tabs {
+        flex-wrap: wrap;
+        gap: 4px !important;
+    }
+    /* Stat cards: 2-column on mobile, compact spacing */
+    html[data-accent="arva"] .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-sm);
+    }
+    html[data-accent="arva"] .stat-card {
+        padding: var(--space-md);
+        flex-direction: column;
+        text-align: center;
+        gap: var(--space-xs);
+    }
+    html[data-accent="arva"] .stat-icon {
+        width: 36px; height: 36px;
+    }
+    html[data-accent="arva"] .stat-icon svg {
+        width: 18px; height: 18px;
+    }
+    html[data-accent="arva"] .stat-value {
+        font-size: 1.5rem;
+    }
+}
+html[data-accent="arva"] .stat-trend.up { color: #5c7329; }
+
+/* ================================================
+   ARVA FINANCE SKIN
+   The Cattle Investment module ships as a dark fintech
+   phone-frame. These scoped overrides re-skin it to the
+   Arva parchment/forest/amber palette so it reads on the
+   light canvas. Base rules in index.css are untouched.
+   ================================================ */
+html[data-accent="arva"] body,
+html[data-accent="arva"] body[data-weather-theme="hot"],
+html[data-accent="arva"] body[data-weather-theme="rainy"],
+html[data-accent="arva"] body[data-weather-theme="cool"],
+html[data-accent="arva"] body[data-weather-theme="fair"],
+html[data-accent="arva"] body:not([data-weather-theme]) {
+    --finance-accent:   #07503f;   /* forest */
+    --finance-accent-2: #c7913c;   /* amber  */
+    --finance-surface:  #ffffff;   /* white card */
+}
+
+/* Phone frame — bone parchment, ink border, no glow */
+html[data-accent="arva"] .finance-phone-frame {
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-md);
+}
+html[data-accent="arva"] .finance-phone-frame::before { background: var(--border-color); }
+
+/* Hero — forest gradient over cattle photo, lime kicker */
+html[data-accent="arva"] .finance-hero {
+    background:
+        linear-gradient(150deg, rgba(7,80,63,.55), rgba(7,40,32,.92)),
+        url("https://commons.wikimedia.org/wiki/Special:FilePath/Brahman%20%28Bos%20indicus%29.jpg") center/cover;
+}
+html[data-accent="arva"] .finance-kicker {
+    background: #e8fe85; color: #07503f; font-weight: 700; letter-spacing: .04em;
+}
+html[data-accent="arva"] .finance-hero h3 {
+    font-family: var(--serif); font-weight: 500; font-size: 1.7rem; letter-spacing: -.012em;
+}
+html[data-accent="arva"] .finance-weather-chip {
+    background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); color: #fff;
+}
+
+/* Summary mini-stats + cards — white with moss border */
+html[data-accent="arva"] .finance-mini-stat,
+html[data-accent="arva"] .breed-card,
+html[data-accent="arva"] .holding-card,
+html[data-accent="arva"] .offer-card,
+html[data-accent="arva"] .payment-rail,
+html[data-accent="arva"] .auth-pipeline {
+    border: 1px solid var(--border-color);
+    background: #fff;
+}
+html[data-accent="arva"] .finance-mini-stat span { color: var(--text-muted); }
+html[data-accent="arva"] .finance-mini-stat strong { color: var(--text-primary); }
+html[data-accent="arva"] .breed-card-title h4,
+html[data-accent="arva"] .holding-card-title h4,
+html[data-accent="arva"] .offer-card-title h4,
+html[data-accent="arva"] .payment-rail-title h4 { color: var(--text-primary); }
+html[data-accent="arva"] .breed-meta span,
+html[data-accent="arva"] .holding-meta span,
+html[data-accent="arva"] .offer-meta span,
+html[data-accent="arva"] .payment-meta span { color: var(--text-muted); }
+html[data-accent="arva"] .breed-meta strong,
+html[data-accent="arva"] .holding-meta strong,
+html[data-accent="arva"] .offer-meta strong,
+html[data-accent="arva"] .payment-meta strong { color: var(--text-primary); }
+
+/* Tags — forest pill with white text */
+html[data-accent="arva"] .finance-tag {
+    background: #07503f; color: #fff; font-weight: 600;
+}
+
+/* Tabs — bone inactive, forest active */
+html[data-accent="arva"] .finance-tab,
+html[data-accent="arva"] .icon-btn {
+    border-color: var(--border-color); background: var(--bg-tertiary); color: var(--text-secondary);
+}
+html[data-accent="arva"] .finance-tab.active,
+html[data-accent="arva"] .finance-tab:hover,
+html[data-accent="arva"] .icon-btn:hover {
+    color: #fff; border-color: transparent;
+    background: #07503f;
+}
+
+/* Section headings — serif */
+html[data-accent="arva"] .finance-section-heading h3 {
+    font-family: var(--serif); font-weight: 500; font-size: 1.25rem; letter-spacing: -.012em;
+}
+
+/* Growth track — forest fill on ash track */
+html[data-accent="arva"] .growth-track { background: var(--bg-tertiary); }
+html[data-accent="arva"] .growth-track span { background: linear-gradient(90deg, #07503f, #7e9a3c); }
+
+/* Pipeline bands — white cards, forest numerals */
+html[data-accent="arva"] .pipeline-band {
+    border: 1px solid var(--border-color); background: #fff;
+}
+html[data-accent="arva"] .pipeline-band span {
+    background: #07503f; color: #fff;
+}
+html[data-accent="arva"] .pipeline-band strong { color: var(--text-primary); }
+html[data-accent="arva"] .pipeline-band p { color: var(--text-secondary); }
+
+/* Auth steps — forest check icons */
+html[data-accent="arva"] .auth-step { color: var(--text-secondary); }
+html[data-accent="arva"] .auth-step svg { color: #07503f; }
+
+/* Breed card images — subtle forest tint on hover */
+html[data-accent="arva"] .breed-card img { filter: saturate(1.05); }
+
+/* Finance insights row + transaction list (Arva additions) */
+html[data-accent="arva"] .finance-insights-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+html[data-accent="arva"] .finance-chart-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    padding: var(--space-md);
+}
+html[data-accent="arva"] .finance-chart-card h4 {
+    font-family: var(--serif); font-weight: 500; font-size: 1rem;
+    margin-bottom: var(--space-sm); color: var(--text-primary);
+}
+html[data-accent="arva"] .finance-chart-card canvas { max-height: 180px; }
+@media (max-width: 480px) {
+    html[data-accent="arva"] .finance-insights-row { grid-template-columns: 1fr; }
+}
+
+html[data-accent="arva"] .transaction-list {
+    display: flex; flex-direction: column; gap: var(--space-xs);
+}
+html[data-accent="arva"] .transaction-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--space-sm) var(--space-md);
+    background: #fff; border: 1px solid var(--border-color);
+    gap: var(--space-sm);
+}
+html[data-accent="arva"] .transaction-item .tx-left { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
+html[data-accent="arva"] .transaction-item .tx-icon {
+    width: 34px; height: 34px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-tertiary);
+}
+html[data-accent="arva"] .transaction-item .tx-icon svg { width: 16px; height: 16px; color: #07503f; }
+html[data-accent="arva"] .transaction-item .tx-info { min-width: 0; }
+html[data-accent="arva"] .transaction-item .tx-type { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); }
+html[data-accent="arva"] .transaction-item .tx-rail { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-accent="arva"] .transaction-item .tx-right { text-align: right; flex-shrink: 0; }
+html[data-accent="arva"] .transaction-item .tx-amount { font-weight: 600; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+html[data-accent="arva"] .transaction-item .tx-amount.positive { color: #07503f; }
+html[data-accent="arva"] .transaction-item .tx-amount.negative { color: var(--accent-red); }
+html[data-accent="arva"] .transaction-item .tx-date { font-size: 0.7rem; color: var(--text-muted); }
+html[data-accent="arva"] .tx-status {
+    font-size: 0.62rem; font-weight: 600; padding: 2px 6px;
+    background: var(--bg-tertiary); color: var(--text-secondary);
+}
+
+/* ================================================
+   ARVA GEOSPATIAL SKIN
+   Re-skins the dark map pane, loader bar, legend, and
+   fallback canvas to the Arva light palette.
+   ================================================ */
+html[data-accent="arva"] .geospatial-pane {
+    background: #e8e4d4;  /* warm bone instead of dark navy */
+}
+html[data-accent="arva"] .geo-loader-bar {
+    background: var(--bg-tertiary);
+    border-bottom-color: var(--border-color);
+}
+html[data-accent="arva"] .geo-file-btn {
+    background: #07503f;  /* forest instead of brown gradient */
+}
+html[data-accent="arva"] .geo-layer-chip {
+    background: #fff; border-color: var(--border-color);
+}
+html[data-accent="arva"] .map-legend {
+    background: rgba(255,255,255,.92);
+    border-color: var(--border-color);
+}
+html[data-accent="arva"] .map-legend .legend-item { color: var(--text-secondary); }
+/* Leaflet controls — light popups + zoom buttons */
+html[data-accent="arva"] .leaflet-popup-content-wrapper {
+    background: #fff; color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+html[data-accent="arva"] .leaflet-popup-tip { background: #fff; }
+html[data-accent="arva"] .leaflet-bar a {
+    background: #fff; color: var(--text-primary); border-color: var(--border-color);
+}
+html[data-accent="arva"] .leaflet-bar a:hover { background: var(--bg-tertiary); }
+html[data-accent="arva"] .leaflet-control-layers {
+    background: #fff; color: var(--text-primary); border: 1px solid var(--border-color);
+}
+html[data-accent="arva"] .leaflet-control-attribution {
+    background: rgba(255,255,255,.8); color: var(--text-muted);
+}
+html[data-accent="arva"] .leaflet-control-attribution a { color: #07503f; }
+
+/* ================================================
+   ARVA CCTV / AI MONITORING SKIN
+   Video feed areas stay dark (correct for footage),
+   but overlays, badges, and UI chrome go Arva.
+   ================================================ */
+html[data-accent="arva"] .cctv-feed:hover {
+    box-shadow: 0 0 24px rgba(7,80,63,.18);
+}
+html[data-accent="arva"] .cctv-feed.uav-feed {
+    border-color: rgba(7,80,63,.45);
+}
+html[data-accent="arva"] .cctv-feed.uav-feed:hover {
+    box-shadow: 0 0 28px rgba(7,80,63,.22);
+}
+html[data-accent="arva"] .feed-type-badge {
+    background: rgba(232,254,133,.18);
+    border-color: rgba(232,254,133,.45);
+    color: #e8fe85;
+}
+html[data-accent="arva"] .cctv-expand-btn {
+    background: rgba(7,80,63,.65);
+}
+html[data-accent="arva"] .uav-link-toggle {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+}
+
+/* AI stats summary cards (Arva additions) */
+html[data-accent="arva"] .ai-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+}
+html[data-accent="arva"] .ai-stat-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    padding: var(--space-md);
+    display: flex; align-items: center; gap: var(--space-sm);
+}
+html[data-accent="arva"] .ai-stat-card .ai-stat-icon {
+    width: 40px; height: 40px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-tertiary);
+}
+html[data-accent="arva"] .ai-stat-card .ai-stat-icon svg { width: 20px; height: 20px; color: #07503f; }
+html[data-accent="arva"] .ai-stat-card .ai-stat-value {
+    font-family: var(--serif); font-weight: 600; font-size: 1.6rem;
+    color: var(--text-primary); line-height: 1;
+}
+html[data-accent="arva"] .ai-stat-card .ai-stat-label {
+    font-size: 0.72rem; color: var(--text-muted);
+}
+@media (max-width: 640px) {
+    html[data-accent="arva"] .ai-stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ================================================
+   ARVA REMAINING PAGES SKIN
+   Livestock · Feed · Health · Movement · Reports
+   ================================================ */
+
+/* Data tables — light borders, forest hover */
+html[data-accent="arva"] .data-table th { color: var(--text-muted); border-bottom-color: var(--border-color); }
+html[data-accent="arva"] .data-table td { border-bottom: 1px solid var(--border-light); }
+html[data-accent="arva"] .data-table tr:hover { background: color-mix(in srgb, #07503f 5%, transparent); }
+
+/* Livestock cards — white, forest hover */
+html[data-accent="arva"] .livestock-card { background: #fff; }
+html[data-accent="arva"] .livestock-card:hover {
+    box-shadow: 0 4px 20px rgba(7,80,63,.12);
+    border-color: #07503f;
+}
+
+/* Feed tier cards — Arva pastels + serif names */
+html[data-accent="arva"] .stats-grid .stat-card[style*="flex-direction: column"] {
+    background: #fff;
+}
+html[data-accent="arva"] .stats-grid .stat-card[style*="flex-direction: column"] > div:nth-child(2) {
+    font-family: var(--serif); font-weight: 500;
+}
+
+/* Feed stat cards — white, forest icons */
+html[data-accent="arva"] .feed-stat-card { background: #fff; }
+html[data-accent="arva"] .feed-stat-icon { background: color-mix(in srgb, #07503f 10%, transparent); color: #07503f; }
+html[data-accent="arva"] .feed-stat-value { font-family: var(--serif); font-weight: 600; }
+
+/* Feed inventory list — light borders */
+html[data-accent="arva"] .inventory-list li,
+html[data-accent="arva"] #feedInventory li {
+    border-bottom: 1px solid var(--border-light) !important;
+}
+
+/* Health stat cards — white, serif values, Arva icon colors */
+html[data-accent="arva"] .health-stat-card { background: #fff; }
+html[data-accent="arva"] .health-stat-value { font-family: var(--serif); font-weight: 600; }
+html[data-accent="arva"] .health-stat-card.healthy svg { color: #07503f; }
+html[data-accent="arva"] .health-stat-card.sick svg { color: var(--accent-red); }
+html[data-accent="arva"] .health-stat-card.pregnant svg { color: #c7913c; }
+html[data-accent="arva"] .health-stat-card.vaccinated svg { color: #7e9a3c; }
+
+/* Disease badges — Arva tones */
+html[data-accent="arva"] .disease-badge.low { background: color-mix(in srgb, #07503f 12%, transparent); color: #07503f; }
+html[data-accent="arva"] .disease-badge.medium { background: color-mix(in srgb, #c7913c 15%, transparent); color: #c7913c; }
+html[data-accent="arva"] .disease-badge.high { background: color-mix(in srgb, var(--accent-red) 12%, transparent); color: var(--accent-red); }
+
+/* Location cards — white, forest icons, serif counts */
+html[data-accent="arva"] .location-card { background: #fff; }
+html[data-accent="arva"] .location-count { font-family: var(--serif); font-weight: 600; }
+html[data-accent="arva"] .location-icon.pen { background: color-mix(in srgb, #07503f 12%, transparent); color: #07503f; }
+html[data-accent="arva"] .location-icon.field { background: color-mix(in srgb, #7e9a3c 12%, transparent); color: #7e9a3c; }
+html[data-accent="arva"] .location-icon.transport { background: color-mix(in srgb, #b2cee7 30%, transparent); color: #07503f; }
+html[data-accent="arva"] .location-icon.quarantine { background: color-mix(in srgb, #c7913c 12%, transparent); color: #c7913c; }
+
+/* Report cards — white, forest icons, serif headings */
+html[data-accent="arva"] .report-card { background: #fff; }
+html[data-accent="arva"] .report-card:hover {
+    box-shadow: 0 4px 20px rgba(7,80,63,.12);
+    border-color: #07503f;
+}
+html[data-accent="arva"] .report-icon { background: color-mix(in srgb, #07503f 10%, transparent); }
+html[data-accent="arva"] .report-icon svg { color: #07503f; }
+html[data-accent="arva"] .report-card h3 { font-family: var(--serif); font-weight: 500; }
+
+/* Page headers — serif titles */
+html[data-accent="arva"] .page-header h2 {
+    font-family: var(--serif); font-weight: 500; letter-spacing: -.012em;
+}
+
+/* Filters bar — light inputs */
+html[data-accent="arva"] .filters-bar input,
+html[data-accent="arva"] .filter-select,
+html[data-accent="arva"] .search-box {
+    background: #fff; border: 1px solid var(--border-color);
+}
+html[data-accent="arva"] .search-box svg { color: var(--text-muted); }
+
+/* Report content — serif section headings */
+html[data-accent="arva"] .report-content h4 {
+    font-family: var(--serif); font-weight: 500; font-size: 1.15rem;
+    margin: var(--space-md) 0 var(--space-sm);
+}
+
+/* Logo image in sidebar */
+.logo-img {
+    width: auto;
+    height: 40px;
+    object-fit: contain;
+    display: block;
+}
+.logo-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+html[data-accent="arva"] .sidebar-header {
+    padding: var(--space-md) var(--space-lg);
+    background: transparent;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+html[data-accent="arva"] .logo-icon-wrap,
+html[data-accent="arva"] .sidebar-logo {
+    background: transparent;
+}
+html[data-accent="arva"] .logo-img {
+    height: 44px;
+}
+@media (max-width: 768px) {
+    .logo-img { height: 32px; }
+    html[data-accent="arva"] .logo-img { height: 36px; }
+}

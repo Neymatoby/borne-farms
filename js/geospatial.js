@@ -23,6 +23,36 @@ const GeospatialModule = {
         ]
     },
 
+    // Zone markers within the farm — paddocks, water points, feed stations, pasture zones
+    farmZones: {
+        paddocks: [
+            { name: 'Paddock A — Main Pen', coords: [8.79500, 7.65490], animals: 96 },
+            { name: 'Paddock B — Quarantine', coords: [8.79490, 7.65500], animals: 11 },
+            { name: 'Paddock C — Weaning', coords: [8.79475, 7.65485], animals: 24 },
+            { name: 'Paddock D — Bull Enclosure', coords: [8.79465, 7.65495], animals: 14 },
+            { name: 'Paddock E — Maternity', coords: [8.79505, 7.65475], animals: 18 },
+            { name: 'Paddock F — Holding', coords: [8.79485, 7.65475], animals: 8 }
+        ],
+        waterPoints: [
+            { name: 'Water Point 1 — North Trough', coords: [8.79508, 7.65490] },
+            { name: 'Water Point 2 — Central Pump', coords: [8.79480, 7.65490] },
+            { name: 'Water Point 3 — South Well', coords: [8.79460, 7.65490] }
+        ],
+        feedStations: [
+            { name: 'Feed Station 1 — Hay Drop', coords: [8.79500, 7.65505] },
+            { name: 'Feed Station 2 — Silage Bay', coords: [8.79490, 7.65480] },
+            { name: 'Feed Station 3 — Grain Mix', coords: [8.79470, 7.65505] },
+            { name: 'Feed Station 4 — Protein Bin', coords: [8.79465, 7.65475] },
+            { name: 'Feed Station 5 — Mineral Lick', coords: [8.79495, 7.65470] }
+        ],
+        pastureZones: [
+            { name: 'Pasture Zone A — North Field', coords: [8.79510, 7.65480], area: '2.1 ha' },
+            { name: 'Pasture Zone B — East Field', coords: [8.79495, 7.65506], area: '1.8 ha' },
+            { name: 'Pasture Zone C — South Field', coords: [8.79460, 7.65475], area: '2.5 ha' },
+            { name: 'Pasture Zone D — West Field', coords: [8.79455, 7.65500], area: '1.6 ha' }
+        ]
+    },
+
     // Tile layer providers (reliable, free, no API key needed)
     tileLayers: {
         osm: {
@@ -62,6 +92,16 @@ const GeospatialModule = {
     init() {
         this.initMiniMap();
         this.bindGeoFileLoader();
+        this.renderZoneStats();
+    },
+
+    renderZoneStats() {
+        const z = this.farmZones;
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        set('geoPastureCount', z.pastureZones.length);
+        set('geoPaddockCount', z.paddocks.length);
+        set('geoWaterCount', z.waterPoints.length);
+        set('geoFeedCount', z.feedStations.length);
     },
 
     // ====================================================
@@ -70,7 +110,7 @@ const GeospatialModule = {
     // Renders each as a Leaflet layer on the main map.
     // ====================================================
     geoLayers: [],   // [{ id, name, layer, color }]
-    geoColorPalette: ['#5473d0', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#ec4899'],
+    geoColorPalette: ['#07503f', '#7e9a3c', '#c7913c', '#b2cee7', '#c3cda7', '#e8fe85', '#fceace'],
 
     bindGeoFileLoader() {
         const input = document.getElementById('geoFileInput');
@@ -489,12 +529,47 @@ const GeospatialModule = {
     drawFarmLayout(map, isMini) {
         // Real surveyed farm boundary
         L.polygon(this.farmBoundary.coords, {
-            color: '#5473d0',
+            color: '#07503f',
             weight: isMini ? 2.5 : 4,
             opacity: 0.9,
             fillOpacity: 0,
             lineJoin: 'round'
         }).bindPopup('<b>Borne Farms</b><br>Surveyed boundary').addTo(map);
+
+        // Skip zone markers on the mini map
+        if (isMini) return;
+
+        const zones = this.farmZones;
+        const makeIcon = (bg, border, glyph) => L.divIcon({
+            className: 'zone-marker',
+            html: `<div style="width:22px;height:22px;background:${bg};border:2px solid ${border};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${border};">${glyph}</div>`,
+            iconSize: [22, 22], iconAnchor: [11, 11]
+        });
+
+        // Pasture zones — olive circles
+        zones.pastureZones.forEach(z => {
+            L.circle(z.coords, {
+                radius: 25, color: '#7e9a3c', weight: 2, fillColor: '#7e9a3c', fillOpacity: 0.15
+            }).bindPopup(`<b>${z.name}</b><br>${z.area}`).addTo(map);
+        });
+
+        // Paddocks — forest markers with "P"
+        zones.paddocks.forEach(p => {
+            L.marker(p.coords, { icon: makeIcon('#e6ecd5', '#07503f', 'P') })
+                .bindPopup(`<b>${p.name}</b><br>${p.animals} cattle`).addTo(map);
+        });
+
+        // Water points — sky markers with "W"
+        zones.waterPoints.forEach(w => {
+            L.marker(w.coords, { icon: makeIcon('#b2cee7', '#07503f', 'W') })
+                .bindPopup(`<b>${w.name}</b>`).addTo(map);
+        });
+
+        // Feed stations — peach markers with "F"
+        zones.feedStations.forEach(f => {
+            L.marker(f.coords, { icon: makeIcon('#fceace', '#07503f', 'F') })
+                .bindPopup(`<b>${f.name}</b>`).addTo(map);
+        });
     },
 
     trackWorkerLocation(map) {
@@ -502,7 +577,7 @@ const GeospatialModule = {
 
         const workerIcon = L.divIcon({
             className: 'worker-marker',
-            html: `<div class="worker-dot" style="width:14px;height:14px;background:#ec4899;border-radius:50%;border:2px solid #fff;box-shadow:0 0 8px #ec4899;"></div>`,
+            html: `<div class="worker-dot" style="width:14px;height:14px;background:#e8fe85;border-radius:50%;border:2px solid #07503f;box-shadow:0 0 8px rgba(232,254,133,.7);"></div>`,
             iconSize: [14, 14],
             iconAnchor: [7, 7]
         });
@@ -541,7 +616,7 @@ const GeospatialModule = {
     renderFallbackMap(container, isMini) {
         container.innerHTML = '';
         container.style.position = 'relative';
-        container.style.background = '#0a1628';
+        container.style.background = '#e8e4d4';
         container.style.overflow = 'hidden';
 
         const canvas = document.createElement('canvas');
@@ -605,12 +680,12 @@ const GeospatialModule = {
         };
 
         // Draw the real surveyed farm boundary
-        drawPoly(this.farmBoundary.coords, '#5473d0', null, 0, isMini ? 2.5 : 4);
+        drawPoly(this.farmBoundary.coords, '#07503f', null, 0, isMini ? 2.5 : 4);
 
         if (!isMini) {
             // Coordinate labels on axes
             ctx.font = '9px Inter, sans-serif';
-            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.fillStyle = 'rgba(33,37,41,0.5)';
             ctx.textAlign = 'left';
             ctx.fillText(`${latMax.toFixed(5)}°N`, 4, pad + 10);
             ctx.fillText(`${latMin.toFixed(5)}°N`, 4, pad + h);
@@ -620,7 +695,7 @@ const GeospatialModule = {
 
             // Title
             ctx.font = 'bold 13px Inter, sans-serif';
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fillStyle = 'rgba(33,37,41,0.7)';
             ctx.textAlign = 'center';
             ctx.fillText('BORNE FARMS — Abuja, FCT Nigeria', canvas.width / 2, 20);
         }
@@ -630,12 +705,12 @@ const GeospatialModule = {
         legendDiv.style.cssText = `
             position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 12px; align-items: center;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+            background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);
             padding: 6px 14px; border-radius: 8px; font-size: 10px;
-            color: rgba(255,255,255,0.7); font-family: Inter, sans-serif;
+            color: rgba(33,37,41,0.7); font-family: Inter, sans-serif;
         `;
         legendDiv.innerHTML = `
-            <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#5473d0;"></span>Farm Boundary</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#07503f;"></span>Farm Boundary</span>
         `;
         container.appendChild(legendDiv);
     }
